@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">DetectorAltaVelocidad</string>
+    <string name="logo_background">Logo de la aplicación movil</string>
 </resources>

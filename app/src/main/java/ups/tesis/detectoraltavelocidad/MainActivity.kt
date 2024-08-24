@@ -1,5 +1,6 @@
 package ups.tesis.detectoraltavelocidad
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.Html
@@ -85,17 +86,15 @@ class MainActivity : AppCompatActivity() {
     private fun btnLogginOnClick() {
         if(estado){
             println("Funciona y el usuario es: ${struser.text}")
+            val intent=Intent(this, MapsActivity::class.java)
+            startActivity(intent)
         }else{
             //logica para crear cuenta
            if(confpass.text.toString()==strupass.text.toString()){
                if(crearCuenta()){
-                   //layourcontenedor.layoutParams.height=256
-                   confpass.visibility= View.GONE
-                   spacepassconf.visibility=View.GONE
-                   btnLogin.setText(R.string.txtLogin)
-                   textoTitulo.setText(R.string.txtLogin)
-                   estado=true
-                   crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtCrearCuenta)}</u>",1)
+                   //
+                   creacion_login()
+
 
                }
            }else{
@@ -105,27 +104,43 @@ class MainActivity : AppCompatActivity() {
     }
     private fun btnCrearCuentaOnClick() {
         if (estado){
-                confpass.visibility= View.VISIBLE
-                spacepassconf.visibility=View.VISIBLE
-                btnLogin.setText(R.string.txtCrearCuenta)
-                textoTitulo.setText(R.string.txtCrearCuenta)
-                estado=false
-            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtLogin)}</u>",1)
-
+               creacion_login(1)
 
         }else{
+            creacion_login()
+        }
+    }
+    private fun crearCuenta(): Boolean {
+        println("CREACION DE CUENTA")
+        return true
+    }
+    private fun creacion_login(proc:Int=0){
+        if (proc==1){
+            //crear cuenta
+            confpass.visibility= View.VISIBLE
+            spacepassconf.visibility=View.VISIBLE
+            btnLogin.setText(R.string.txtCrearCuenta)
+            textoTitulo.setText(R.string.txtCrearCuenta)
+            estado=false
+            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtLogin)}</u>",1)
+            layourcontenedor.layoutParams.height=(300*this.resources.displayMetrics.density).toInt()
+            val params = layourcontenedor.layoutParams as ViewGroup.MarginLayoutParams
+            params.setMargins(params.leftMargin, params.topMargin, params.rightMargin, (211*this.resources.displayMetrics.density).toInt())
+            layourcontenedor.layoutParams = params
+
+        }else{
+            //inicio sesion
             confpass.visibility= View.GONE
             spacepassconf.visibility=View.GONE
             btnLogin.setText(R.string.txtLogin)
             textoTitulo.setText(R.string.txtLogin)
             estado=true
             crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtCrearCuenta)}</u>",1)
-
+            val params = layourcontenedor.layoutParams as ViewGroup.MarginLayoutParams
+            layourcontenedor.layoutParams.height=ViewGroup.LayoutParams.WRAP_CONTENT
+            params.setMargins(params.leftMargin, params.topMargin, params.rightMargin, (254*this.resources.displayMetrics.density).toInt())
+            layourcontenedor.layoutParams = params
         }
-    }
-    private fun crearCuenta(): Boolean {
-        println("CREACION DE CUENTA")
-        return true
     }
     private fun alertBox(titulo:String, texto: Int, btnTxt:String){
         val artDialogBuilder=AlertDialog.Builder(this@MainActivity)

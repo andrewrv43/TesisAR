@@ -9,8 +9,9 @@
     tools:context=".MainActivity">
 
     <LinearLayout
+        android:id="@+id/layoutContenedor"
         android:layout_width="wrap_content"
-        android:layout_height="230dp"
+        android:layout_height="wrap_content"
         android:layout_alignParentStart="true"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true"
@@ -18,17 +19,16 @@
         android:layout_marginStart="79dp"
         android:layout_marginTop="221dp"
         android:layout_marginEnd="62dp"
-        android:layout_marginBottom="280dp"
+        android:layout_marginBottom="254dp"
         android:background="@drawable/rounded_background"
         android:orientation="vertical"
         android:paddingLeft="10dp"
         android:paddingRight="10dp">
 
         <TextView
-            android:id="@+id/textView2"
+            android:id="@+id/textoTitulo"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Login"
             android:textAlignment="center"
             android:textColor="#FFFFFF"
             android:textSize="34sp"
@@ -42,8 +42,8 @@
             android:hint="Nombre de Usuario"
             android:inputType="text"
             android:minHeight="48dp"
-            android:textColorHint="#FFFFFF"
-            android:textColor="#FFFFFF"/>
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FFFFFF" />
 
         <Space
             android:layout_width="match_parent"
@@ -57,19 +57,47 @@
             android:hint="Contraseña"
             android:inputType="textPassword"
             android:minHeight="48dp"
-            android:textColorHint="#FFFFFF"
-            android:textColor="#FFFFFF"/>
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FFFFFF" />
+
 
         <Space
             android:layout_width="match_parent"
             android:layout_height="20dp" />
 
-        <Button
-            android:id="@+id/button2"
+        <EditText
+            android:id="@+id/passwordconf"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Iniciar Sesión"
-            android:backgroundTint="#02E388"/>
+            android:ems="10"
+            android:hint="Confirmar la contraseña"
+            android:inputType="textPassword"
+            android:minHeight="48dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#FFFFFF"
+            android:visibility="gone" />
+
+
+        <Space
+            android:id="@+id/spacepassconf"
+            android:layout_width="match_parent"
+            android:layout_height="20dp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/login_btn"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:backgroundTint="#02E388"
+            android:text="@string/txtLogin" />
+
+        <TextView
+            android:id="@+id/textView3"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textAlignment="center"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp" />
 
     </LinearLayout>
 

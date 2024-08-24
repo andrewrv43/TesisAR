@@ -1,4 +1,8 @@
 <resources>
     <string name="app_name">DetectorAltaVelocidad</string>
     <string name="logo_background">Logo de la aplicación movil</string>
+    <string name="txtLogin">Iniciar Sesión</string>
+    <string name="txtCrearCuenta">Crear Cuenta</string>
+    <string name="txtContraseñaNoCoincide">Las contraseñas deben ser iguales. Por favor intente de nuevo</string>
+
 </resources>

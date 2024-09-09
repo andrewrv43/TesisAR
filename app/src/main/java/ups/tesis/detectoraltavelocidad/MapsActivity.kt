@@ -12,10 +12,13 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener {
     private lateinit var map: GoogleMap
     companion object { const val REQUEST_CODE_LOCATION = 0 }
+    private var lastMarker: Marker? = null
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
@@ -88,21 +91,38 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         grantResults: IntArray
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        when(requestCode) {
-            REQUEST_CODE_LOCATION -> if(grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        when (requestCode) {
+            REQUEST_CODE_LOCATION -> if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 map.isMyLocationEnabled = true
             } else {
-                Toast.makeText(this, "Para aceptar los permisos debes hacerlo desde ajustes", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this,
+                    "Para aceptar los permisos debes hacerlo desde ajustes",
+                    Toast.LENGTH_SHORT
+                ).show()
             }
+
             else -> {}
         }
     }
 
+    /**
+     *   Se muestra una notificacion en la localizacion del usuario
+     */
     override fun onMyLocationClick(p0: Location) {
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
     }
-
+    /**
+     *   Se muestra una notificacion y una marca en la localizacion seleccionada
+     */
     override fun onMapClick(p0: LatLng) {
-        Toast.makeText(this, "Localizacion de mapa: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
+        lastMarker?.remove()
+
+        val marker = MarkerOptions()
+            .position(p0)
+            .title("Ubicación seleccionada")
+        lastMarker = map.addMarker(marker)
+
+        Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
     }
 }

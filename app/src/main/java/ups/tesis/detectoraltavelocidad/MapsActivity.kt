@@ -15,10 +15,23 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener {
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import android.widget.TextView
+
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener, SensorEventListener {
     private lateinit var map: GoogleMap
     companion object { const val REQUEST_CODE_LOCATION = 0 }
     private var lastMarker: Marker? = null
+
+    /* Variables para sensor de velocidad */
+    private lateinit var sensorManager: SensorManager
+    private var accelerometer: Sensor? = null
+    private lateinit var xValueText: TextView
+    private lateinit var yValueText: TextView
+    private lateinit var zValueText: TextView
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
@@ -35,14 +48,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
         createMapFragment()
-        /*
-        enableEdgeToEdge()
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main)) { v, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
-        */
+
+        // Inicializar los TextViews para mostrar los valores
+        xValueText = findViewById(R.id.xValue)
+        yValueText = findViewById(R.id.yValue)
+        zValueText = findViewById(R.id.zValue)
+
+        // Inicializar el SensorManager y el acelerómetro
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
     }
 
     /**
@@ -112,6 +126,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     override fun onMyLocationClick(p0: Location) {
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
     }
+
     /**
      *   Se muestra una notificacion y una marca en la localizacion seleccionada
      */
@@ -120,9 +135,46 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         val marker = MarkerOptions()
             .position(p0)
-            .title("Ubicación seleccionada")
+            .title("Posicion seleccionada")
         lastMarker = map.addMarker(marker)
 
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
+    }
+
+
+    /*********************************************************************************************
+     *   Sensor de velocidad
+     ********************************************************************************************/
+
+    override fun onResume() {
+        super.onResume()
+        // Registrar el listener del sensor
+        accelerometer?.also { sensor ->
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Detener el sensor cuando la actividad no esté visible
+        sensorManager.unregisterListener(this)
+    }
+
+    // Implementar el método para recibir actualizaciones del sensor
+    override fun onSensorChanged(event: SensorEvent) {
+        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+            val x = event.values[0]
+            val y = event.values[1]
+            val z = event.values[2]
+
+            // Mostrar los valores del acelerómetro en los TextViews
+            xValueText.text = "X: $x"
+            yValueText.text = "Y: $y"
+            zValueText.text = "Z: $z"
+        }
+    }
+
+    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
+        // No es necesario implementar este método en este caso
     }
 }

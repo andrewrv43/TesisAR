@@ -39,13 +39,13 @@
 
         <TextView
             android:id="@+id/xValue"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="X: 0.0"
             android:textSize="24sp"/>
         <TextView
             android:id="@+id/yValue"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Y: 0.0"
             android:textSize="24sp"/>
@@ -54,7 +54,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Z: 0.0"
-            android:textSize="24sp"/>
+            android:textSize="24sp" />
         <TextView
             android:id="@+id/speedValue"
             android:layout_width="wrap_content"
@@ -66,7 +66,7 @@
     <LinearLayout
         android:id="@+id/buttons_layout"
         android:layout_width="0dp"
-        android:layout_height="wrap_content"
+        android:layout_height="70"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
@@ -74,21 +74,18 @@
 
         <Button
             android:id="@+id/button1"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Button 1" />
+            android:background="@color/black"
+            android:text="Mi perfil" />
         <Button
             android:id="@+id/button2"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Button 2" />
-        <Button
-            android:id="@+id/button3"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Button 3" />
+            android:background="@color/black"
+            android:text="Informacion adicional" />
         </LinearLayout>
+
 </androidx.constraintlayout.widget.ConstraintLayout>

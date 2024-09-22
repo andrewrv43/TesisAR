@@ -168,13 +168,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      * Actualizar los valores del acelerómetro
      */
     // Variables para almacenar la velocidad en cada eje
-    var vx = 0.0
-    var vy = 0.0
-    var vz = 0.0
-    val alpha = 0.5
-    var ax = 0.0
-    var ay = 0.0
-    var az = 0.0
+    private var ax: Double = 0.0
+    private var ay: Double = 0.0
+    private var az: Double = 0.0
 
     // Tiempo inicial
     var lastTimestamp = 0L
@@ -183,35 +179,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             ax = event.values[0].toDouble()
             ay = event.values[1].toDouble()
             az = event.values[2].toDouble()
-            /*
-            ax = alpha * ax + (1 - alpha) * event.values[0]
-            ay = alpha * ay + (1 - alpha) * event.values[1]
-            az = alpha * az + (1 - alpha) * event.values[2]*/
-
-            val accelerationMagnitude = sqrt(ax * ax + ay * ay + az * az)
-
-            // Reiniciar la velocidad si la aceleración es baja
-            if (accelerationMagnitude < 0.1) {
-                vx = 0.0
-                vy = 0.0
-                vz = 0.0
-            }
+            
+            // Calcular la magnitud de la aceleración con valores (X,Z)
+            val accelerationMagnitude = sqrt((ax * ax) + (az * az))
 
             // Calcular el tiempo transcurrido
             val currentTimestamp = System.currentTimeMillis()
             val dt = (currentTimestamp - lastTimestamp) / 1000.0
             lastTimestamp = currentTimestamp
 
-            // Integrar la aceleración para obtener la velocidad
-            vx += ax * dt
-            vy += ay * dt
-            vz += az * dt
-
-            // Calcular la magnitud de la velocidad
-            val speed = sqrt(vx * vx + vy * vy + vz * vz)
-
             // Convertir a km/h
-            val speedKmh = speed* 3.6
+            val speedKmh = accelerationMagnitude * dt
 
             // Mostrar la velocidad
             speedText.text = "Speed: %.2f km/h".format(speedKmh)

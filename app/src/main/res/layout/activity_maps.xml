@@ -43,19 +43,23 @@
             android:layout_height="wrap_content"
             android:text="X: 0.0"
             android:textSize="24sp"/>
-
         <TextView
             android:id="@+id/yValue"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Y: 0.0"
             android:textSize="24sp"/>
-
         <TextView
             android:id="@+id/zValue"
-            android:layout_width="wrap_content"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Z: 0.0"
+            android:textSize="24sp"/>
+        <TextView
+            android:id="@+id/speedValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Speed: 0 km/h"
             android:textSize="24sp"/>
     </LinearLayout>
 

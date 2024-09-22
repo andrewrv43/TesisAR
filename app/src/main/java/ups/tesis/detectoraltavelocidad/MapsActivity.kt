@@ -20,6 +20,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.widget.TextView
+import kotlin.math.sqrt
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener, SensorEventListener {
     private lateinit var map: GoogleMap
@@ -32,31 +33,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var xValueText: TextView
     private lateinit var yValueText: TextView
     private lateinit var zValueText: TextView
+    private lateinit var speedText: TextView
 
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
         map.setOnMyLocationClickListener(this)
         map.setOnMapClickListener(this)
         enableLocation()
-        // Añadir un marcador en una ubicación específica
-        // val sydney = LatLng(-34.0, 151.0)
-        // map.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        // map.moveCamera(CameraUpdateFactory.newLatLng(sydney))
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
         createMapFragment()
-
-        // Inicializar los TextViews para mostrar los valores
-        xValueText = findViewById(R.id.xValue)
-        yValueText = findViewById(R.id.yValue)
-        zValueText = findViewById(R.id.zValue)
-
-        // Inicializar el SensorManager y el acelerómetro
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        createAcelerometerSensor()
     }
 
     /**
@@ -143,8 +133,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
 
     /*********************************************************************************************
-     *   Sensor de velocidad
+     *   Sensor de velocidad (ACELEROMETRO)
      ********************************************************************************************/
+    /**
+     * Crear sensor de acelerometro y inicializar los TextViews
+     */
+    private fun createAcelerometerSensor() {
+        // Inicializar los TextViews para mostrar los valores
+        xValueText = findViewById(R.id.xValue)
+        yValueText = findViewById(R.id.yValue)
+        zValueText = findViewById(R.id.zValue)
+        speedText = findViewById(R.id.speedValue)
+
+        // Inicializar el SensorManager y el acelerómetro
+        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+    }
 
     override fun onResume() {
         super.onResume()
@@ -160,17 +164,62 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         sensorManager.unregisterListener(this)
     }
 
-    // Implementar el método para recibir actualizaciones del sensor
+    /**
+     * Actualizar los valores del acelerómetro
+     */
+    // Variables para almacenar la velocidad en cada eje
+    var vx = 0.0
+    var vy = 0.0
+    var vz = 0.0
+    val alpha = 0.5
+    var ax = 0.0
+    var ay = 0.0
+    var az = 0.0
+
+    // Tiempo inicial
+    var lastTimestamp = 0L
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            val x = event.values[0]
-            val y = event.values[1]
-            val z = event.values[2]
+            ax = event.values[0].toDouble()
+            ay = event.values[1].toDouble()
+            az = event.values[2].toDouble()
+            /*
+            ax = alpha * ax + (1 - alpha) * event.values[0]
+            ay = alpha * ay + (1 - alpha) * event.values[1]
+            az = alpha * az + (1 - alpha) * event.values[2]*/
+
+            val accelerationMagnitude = sqrt(ax * ax + ay * ay + az * az)
+
+            // Reiniciar la velocidad si la aceleración es baja
+            if (accelerationMagnitude < 0.1) {
+                vx = 0.0
+                vy = 0.0
+                vz = 0.0
+            }
+
+            // Calcular el tiempo transcurrido
+            val currentTimestamp = System.currentTimeMillis()
+            val dt = (currentTimestamp - lastTimestamp) / 1000.0
+            lastTimestamp = currentTimestamp
+
+            // Integrar la aceleración para obtener la velocidad
+            vx += ax * dt
+            vy += ay * dt
+            vz += az * dt
+
+            // Calcular la magnitud de la velocidad
+            val speed = sqrt(vx * vx + vy * vy + vz * vz)
+
+            // Convertir a km/h
+            val speedKmh = speed* 3.6
+
+            // Mostrar la velocidad
+            speedText.text = "Speed: %.2f km/h".format(speedKmh)
 
             // Mostrar los valores del acelerómetro en los TextViews
-            xValueText.text = "X: $x"
-            yValueText.text = "Y: $y"
-            zValueText.text = "Z: $z"
+            xValueText.text = "X: $ax"
+            yValueText.text = "Y: $ay"
+            zValueText.text = "Z: $az"
         }
     }
 

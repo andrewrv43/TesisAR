@@ -45,7 +45,13 @@ jobs:
           source venv/bin/activate
           pip install -r requirements.txt
 
-      # Paso 4: Esperar que MongoDB esté listo
+      # Paso 4: Instalar cliente MongoDB
+      - name: Install MongoDB client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y mongodb-clients
+
+      # Paso 5: Esperar que MongoDB esté listo
       - name: Wait for MongoDB to be ready
         run: |
           for i in {1..20}; do
@@ -57,12 +63,12 @@ jobs:
             sleep 5
           done
 
-      # Paso 5: Crear la base de datos y colección dentro del contenedor de MongoDB
+      # Paso 6: Crear la base de datos y colección en MongoDB usando el cliente
       - name: Create MongoDB database and collection
         run: |
-          docker exec mongo mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'
+          mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'
 
-      # Paso 6: Iniciar el servidor Flask
+      # Paso 7: Iniciar el servidor Flask
       - name: Start Flask server
         run: |
           source venv/bin/activate
@@ -72,7 +78,7 @@ jobs:
           FLASK_ENV: development
           MONGO_URI: mongodb://localhost:27017/usrs_test
 
-      # Paso 7: Mantener el servidor Flask corriendo
+      # Paso 8: Mantener el servidor Flask corriendo
       - name: Keep server running
         run: |
           sleep 300

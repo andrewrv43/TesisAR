@@ -1,0 +1,40 @@
+openapi: 3.0.0
+info:
+  title: API de Usuarios
+  description: API para gestionar usuarios en MongoDB
+  version: "1.0"
+
+paths:
+  /user:
+    get:
+      tags:
+        - USER
+      summary: Obtener todos los usuarios
+      description: Obtiene la lista de todos los usuarios registrados
+      responses:
+        '200':
+          description: Lista de usuarios obtenida exitosamente
+          content:
+            application/json:
+              example:
+                - id: '1'
+                  user: 'JohnDoe'
+                  pwd: 'hashedpassword'
+                  fecha_creacion: '2023-09-15T14:28:22.842Z'
+  /user/{id}:
+    get:
+      tags:
+        - USER
+      summary: Obtener un usuario por ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: ID del usuario
+      responses:
+        '200':
+          description: Usuario obtenido exitosamente
+        '404':
+          description: Usuario no encontrado

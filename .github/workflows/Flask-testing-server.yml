@@ -11,11 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     services:
-      # Levantar MongoDB como servicio dentro de Docker
       mongo:
-        image: mongo:latest
+        image: mongo:4.4  # Usa una versión más estable
         ports:
-          - 27017:27017  # Puerto donde MongoDB estará expuesto
+          - 27017:27017
         options: >-
           --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
           --health-interval=30s
@@ -23,6 +22,12 @@ jobs:
           --health-retries=10
 
     steps:
+      # Configurar los parámetros del kernel
+      - name: Set sysctl parameters
+        run: |
+          sudo sysctl -w vm.max_map_count=16777216
+          sudo sysctl -w vm.swappiness=1
+
       # Paso 1: Clonar el repositorio
       - name: Checkout repository
         uses: actions/checkout@v2
@@ -31,14 +36,14 @@ jobs:
       - name: Set up Python 3.8
         uses: actions/setup-python@v2
         with:
-          python-version: 3.8  # Versión de Python
+          python-version: 3.8
 
       # Paso 3: Instalar dependencias de Python
       - name: Install dependencies
         run: |
-          python -m venv venv  # Crear entorno virtual
-          source venv/bin/activate  # Activar entorno virtual
-          pip install -r requirements.txt  # Instalar dependencias
+          python -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
 
       # Paso 4: Esperar que MongoDB esté listo
       - name: Wait for MongoDB to be ready
@@ -52,22 +57,22 @@ jobs:
             sleep 5
           done
 
-      # Paso 5: Configurar la base de datos y colección
+      # Paso 5: Crear la base de datos y colección
       - name: Create MongoDB database and collection
         run: |
-          mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'  # Crear base de datos y colección
+          mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'
 
       # Paso 6: Iniciar el servidor Flask
       - name: Start Flask server
         run: |
-          source venv/bin/activate  # Activar el entorno virtual
-          export FLASK_APP=run.py  # Archivo donde arranca Flask
+          source venv/bin/activate
+          export FLASK_APP=run.py
           flask run --host=0.0.0.0 --port=5000 &
         env:
-          FLASK_ENV: development  # Configurar entorno de Flask
-          MONGO_URI: mongodb://localhost:27017/usrs_test  # URI de conexión a MongoDB
+          FLASK_ENV: development
+          MONGO_URI: mongodb://localhost:27017/usrs_test
 
       # Paso 7: Mantener el servidor Flask corriendo
       - name: Keep server running
         run: |
-          sleep 300  # Mantiene el servidor corriendo por 5 minutos
+          sleep 300

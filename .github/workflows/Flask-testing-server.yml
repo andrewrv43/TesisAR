@@ -17,7 +17,7 @@ jobs:
         ports:
           - 27017:27017  # Puerto donde MongoDB estará expuesto
         options: >-
-          --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"  # Comando para verificar si MongoDB está corriendo
+          --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5

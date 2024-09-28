@@ -57,10 +57,12 @@ jobs:
             sleep 5
           done
 
-      # Paso 5: Crear la base de datos y colección
+      # Paso 5: Crear la base de datos y colección dentro del contenedor de MongoDB
       - name: Create MongoDB database and collection
         run: |
-          mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'
+          docker exec mongo mongo localhost:27017/usrs_test --eval 'db.createCollection("usrs")'
+
+
 
       # Paso 6: Iniciar el servidor Flask
       - name: Start Flask server

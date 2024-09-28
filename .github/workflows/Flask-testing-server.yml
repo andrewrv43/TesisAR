@@ -18,9 +18,9 @@ jobs:
           - 27017:27017  # Puerto donde MongoDB estará expuesto
         options: >-
           --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
-          --health-interval=30s  # Intervalo de tiempo entre verificaciones de salud
-          --health-timeout=10s   # Tiempo de espera para cada verificación
-          --health-retries=10    # Número de reintentos antes de marcar como 'unhealthy'
+          --health-interval=30s
+          --health-timeout=10s
+          --health-retries=10
 
     steps:
       # Paso 1: Clonar el repositorio

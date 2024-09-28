@@ -18,9 +18,9 @@ jobs:
           - 27017:27017  # Puerto donde MongoDB estará expuesto
         options: >-
           --health-cmd "mongo --eval 'db.adminCommand(\"ping\")'"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-interval=30s  # Intervalo de tiempo entre verificaciones de salud
+          --health-timeout=10s   # Tiempo de espera para cada verificación
+          --health-retries=10    # Número de reintentos antes de marcar como 'unhealthy'
 
     steps:
       # Paso 1: Clonar el repositorio
@@ -43,13 +43,13 @@ jobs:
       # Paso 4: Esperar que MongoDB esté listo
       - name: Wait for MongoDB to be ready
         run: |
-          for i in {1..10}; do
+          for i in {1..20}; do
             if nc -z localhost 27017; then
               echo "MongoDB is up and running"
               break
             fi
             echo "Waiting for MongoDB..."
-            sleep 3
+            sleep 5
           done
 
       # Paso 5: Configurar la base de datos y colección

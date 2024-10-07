@@ -1,31 +1,52 @@
 package ups.tesis.detectoraltavelocidad
 
 import android.Manifest
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
+import android.content.res.Resources
 import android.location.Location
 import android.os.Bundle
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
-import androidx.core.app.ActivityCompat
-import androidx.core.content.ContextCompat
-import com.google.android.gms.maps.GoogleMap
-import com.google.android.gms.maps.OnMapReadyCallback
-import com.google.android.gms.maps.SupportMapFragment
-import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.Marker
-import com.google.android.gms.maps.model.MarkerOptions
-
+import android.widget.TextView
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.widget.TextView
-import kotlin.math.sqrt
+import android.location.LocationListener
+import android.util.Log
+import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
+import android.widget.ImageView
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener, SensorEventListener {
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.viewpager2.widget.ViewPager2
+import androidx.fragment.app.Fragment
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
+
+import com.google.android.gms.maps.GoogleMap
+import com.google.android.gms.maps.OnMapReadyCallback
+import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.MapStyleOptions
+import com.google.android.gms.maps.model.Marker
+import com.google.android.gms.maps.model.MarkerOptions
+
+import kotlin.math.sqrt
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener, SensorEventListener
+    /*,LocationListener*/ {
+
     private lateinit var map: GoogleMap
-    companion object { const val REQUEST_CODE_LOCATION = 0 }
+    companion object { const val REQUEST_CODE_LOCATION = 1000 }
     private var lastMarker: Marker? = null
+    private var mapStyleFile: String = "map_style_standard_111.json"  // Estilo predeterminado
+    private lateinit var mapStyleReceiver: BroadcastReceiver
+    private lateinit var infoBtn: ImageView
 
     /* Variables para sensor de velocidad */
     private lateinit var sensorManager: SensorManager
@@ -35,27 +56,60 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var zValueText: TextView
     private lateinit var speedText: TextView
 
-    override fun onMapReady(googleMap: GoogleMap) {
-        map = googleMap
-        map.setOnMyLocationClickListener(this)
-        map.setOnMapClickListener(this)
-        enableLocation()
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
+
+        //val viewPager: ViewPager2 = findViewById(R.id.viewPager)
+        //val adapter = ViewPagerAdapter(this)
+        //viewPager.adapter = adapter
+
         createMapFragment()
         createAcelerometerSensor()
+
+        // Obtener referencia al ImageView
+        infoBtn = findViewById(R.id.infoBtn)
+
+        // Establecer el listener de click
+        infoBtn.setOnClickListener {
+            // Crear un Intent para lanzar actividad InfoActivity
+            val intent = Intent(this, InfoActivity::class.java)
+            startActivity(intent)
+        }
+
+        // Registrar el BroadcastReceiver
+        registerMapStyleReceiver()
+    }
+
+    override fun onMapReady(googleMap: GoogleMap) {
+        map = googleMap
+
+        map.setOnMyLocationClickListener(this)
+        map.setOnMapClickListener(this)
+
+        // Aplicar el estilo del mapa
+        applyMapStyle()
+
+        enableLocation()
     }
 
     /**
      * Crear fragmento del mapa
      */
     private fun createMapFragment() {
+        // Obtener el nombre del estilo desde SharedPreferences
+        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
+        mapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
+
         val mapFragment: SupportMapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Desregistrar el BroadcastReceiver
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
     }
 
     /**
@@ -131,6 +185,68 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
     }
 
+    /**
+     *  Calculo de la distancia entre dos puntos
+     */
+    /*override fun onLocationChanged(location: Location) {
+        val speed = location.speed // Velocidad en m/s
+        val speedKmh = speed * 3.6 // Convertir a km/h
+
+        // Mostrar la velocidad en tu TextView
+        speedText.text = "Velocidad: %.2f km/h".format(speedKmh)
+    }*/
+
+    /***********************************************************************************************
+     *   Estilo del mapa
+     **********************************************************************************************/
+    /**
+     *  Busca y aplica el estilo almacenado en "SharedPreferences"
+     */
+
+    private fun applyMapStyle() {
+        // Obtener el nombre del estilo desde SharedPreferences
+        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
+        mapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
+
+        try {
+            // Obtener el ID del recurso del archivo de estilo
+            val styleResId = resources.getIdentifier(
+                mapStyleFile.substringBeforeLast(".json"),
+                "raw",
+                packageName
+            )
+
+            val success = map.setMapStyle(
+                MapStyleOptions.loadRawResourceStyle(
+                    this, styleResId
+                )
+            )
+
+            if (!success) {
+                Log.e("MapsActivity", "Error al cargar el estilo.")
+            }
+        } catch (e: Resources.NotFoundException) {
+            Log.e("MapsActivity", "No se encontro el estilo.", e)
+        }
+    }
+
+    /**
+     *  Registra el BroadcastReceiver para recibir actualizaciones de estilo
+     */
+
+    private fun registerMapStyleReceiver() {
+        mapStyleReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                // Actualizar el estilo del mapa
+                applyMapStyle()
+            }
+        }
+        val filter = IntentFilter("com.example.UPDATE_MAP_STYLE")
+        LocalBroadcastManager.getInstance(this).registerReceiver(mapStyleReceiver, filter)
+    }
+
+    /**********************************************************************************************/
+
 
     /*********************************************************************************************
      *   Sensor de velocidad (ACELEROMETRO)
@@ -156,6 +272,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         accelerometer?.also { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
+
+        // Aplicar el estilo del mapa al reanudar la actividad
+        //if (::map.isInitialized) {
+            //applyMapStyle()
+        //}
+
+        // Verificar si el estilo ha cambiado
+        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
+        val newMapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
+
+        if (newMapStyleFile != mapStyleFile) {
+            mapStyleFile = newMapStyleFile
+            applyMapStyle()
+        }
+
     }
 
     override fun onPause() {
@@ -179,7 +310,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             ax = event.values[0].toDouble()
             ay = event.values[1].toDouble()
             az = event.values[2].toDouble()
-            
+
             // Calcular la magnitud de la aceleración con valores (X,Z)
             val accelerationMagnitude = sqrt((ax * ax) + (az * az))
 

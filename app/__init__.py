@@ -16,7 +16,9 @@ app.register_blueprint(user_blueprint)
 # Inicializar la aplicación
 def create_app():
 
-
+# Cargar la configuración desde config.py
+    app.config.from_object(Config)
+    Config.init_app(app)
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', handlers=[
         RotatingFileHandler("app.log", maxBytes=10000, backupCount=3),
         logging.StreamHandler()

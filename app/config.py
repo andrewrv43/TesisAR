@@ -1,4 +1,4 @@
 import os
 
 class Config:
-    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/usrs_test')
+    MONGO_URI = os.getenv('MONGO_URI', 'mongodb://localhost:27017/sp_base')

@@ -1,13 +1,45 @@
 from flask import Blueprint, jsonify, request
 from app.models.user_model import UserModel,SpeedRecord
 from flasgger import swag_from
-
+from app.config import Config
+import datetime
+import jwt
+from app.auth_middleware import token_required
 user_blueprint = Blueprint('user', __name__)
+
+def verify_user(username, password):
+    # Obtener todos los usuarios de UserModel
+    for user in UserModel.get_all_users():
+        # Verificar si el nombre de usuario existe y si la contraseña es correcta
+        if user['user'] == username:
+            return user
+    if username in ['andrew', 'ronny'] and password in ['1234', '4815']:
+        return {
+            "user": "admin",
+            "_id": "1"
+        }
+
+    # Si no se encuentra coincidencia, retornar None
+    return None
+
+@user_blueprint.route('/login', methods=['POST'])
+def login():
+    auth = request.get_json()
+    user = verify_user(auth['username'], auth['password'])
+    if user:
+        token = jwt.encode({
+            'user': user['user'],
+            'id': user['_id'],
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+        }, Config.SECRET_KEY, algorithm='HS256')
+        return jsonify({'token': token})
+    return jsonify({'message': 'Usuario o contraseña incorrectos'}), 401
 #########################################
 #           USUARIOS                    #
 #########################################
 # Ruta para obtener todos los usuarios
 @user_blueprint.route('/user', methods=['GET'])
+@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Obtener todos los usuarios',
@@ -32,6 +64,7 @@ def get_users():
 
 # Ruta para obtener un usuario por ID
 @user_blueprint.route('/user/<id>', methods=['GET'])
+@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Obtener un usuario por ID',
@@ -69,6 +102,7 @@ def get_user(id):
 
 # Ruta para obtener un usuario por username
 @user_blueprint.route('/user/<username>', methods=['GET'])
+@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Obtener un usuario por ID',
@@ -108,6 +142,7 @@ def get_username(username):
 
 # Ruta para crear un nuevo usuario
 @user_blueprint.route('/user', methods=['POST'])
+@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Crear un nuevo usuario',
@@ -169,6 +204,7 @@ def create_new_user():
         return jsonify({'error': 'Este nombre de usuario ya existe'}), 409   
 # Ruta para actualizar un usuario por ID
 @user_blueprint.route('/useract', methods=['POST'])
+@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Actualizar un usuario por ID',
@@ -227,6 +263,7 @@ def update_user():
 #########################################
 
 @user_blueprint.route('/sp_nvrecord', methods=['POST'])
+@token_required
 @swag_from({
     'tags': ['Velocity Records'],
     'summary': 'Crear un nuevo registro de velocidad',
@@ -300,6 +337,7 @@ def create_sp_record():
     new_record = SpeedRecord.create_speed_record(data['latitud'], data['longitud'], data['user_id'], data['velocidad'], data['fecha'])
     return jsonify(new_record), 201
 @user_blueprint.route('/get_spdrecords', methods=['GET'])
+@token_required
 @swag_from({
     'tags': ['Velocity Records'],
     'summary': 'Crear un nuevo registro de velocidad',

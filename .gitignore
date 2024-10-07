@@ -9,6 +9,10 @@ env/
 __pycache__/
 *.pyc
 *.pyo
-
+*.env
 # Ignorar entornos de VSCode (opcional)
 .vscode/
+
+
+# LOGS
+app.log

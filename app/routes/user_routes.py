@@ -154,16 +154,21 @@ def get_username(username):
         }
     }
 })
-def create_new_user():  # Cambiado de create_user a create_new_user
+def create_new_user():  
     data = request.get_json()
-    if  not UserModel.get_user_by_username(data['user']):
+
+    # Verificar que los parámetros obligatorios estén presentes
+    if 'user' not in data or 'pwd' not in data:
+        return jsonify({'error': 'Faltan parámetros obligatorios: user y pwd'}), 400
+
+    # Verificar si el usuario ya existe
+    if not UserModel.get_user_by_username(data['user']):
         new_user = UserModel.create_user(data['user'], data['pwd'])
         return jsonify(new_user), 201
     else:
-        return jsonify({'error': 'Este nombre de usuario ya existe'}), 404
-        
+        return jsonify({'error': 'Este nombre de usuario ya existe'}), 409   
 # Ruta para actualizar un usuario por ID
-@user_blueprint.route('/user/<id>', methods=['PUT'])
+@user_blueprint.route('/useract', methods=['POST'])
 @swag_from({
     'tags': ['USER'],
     'summary': 'Actualizar un usuario por ID',
@@ -198,45 +203,24 @@ def create_new_user():  # Cambiado de create_user a create_new_user
         }
     }
 })
-def update_user(id):
+def update_user():
     data = request.get_json()
-    updated_user = UserModel.update_user(id, data)
+
+    # Verificar que los parámetros obligatorios estén presentes
+    if 'id' not in data or 'user' not in data or 'pwd' not in data:
+        return jsonify({'error': 'Faltan parámetros obligatorios: id, user y pwd'}), 400
+
+    # Verificar si el nuevo nombre de usuario ya existe
+    existing_user = UserModel.get_user_by_username(data['user'])
+    if existing_user:
+        return jsonify({'error': 'El nombre de usuario ya está en uso'}), 409
+
+    updated_user = UserModel.update_user(data)
+    
     if updated_user:
         return jsonify(updated_user), 200
     else:
         return jsonify({'error': 'Usuario no encontrado'}), 404
-
-# Ruta para eliminar un usuario
-@user_blueprint.route('/user/<id>', methods=['DELETE'])
-@swag_from({
-    'tags': ['USER'],
-    'summary': 'Eliminar un usuario por ID',
-    'description': 'Elimina un usuario registrado a partir de su ID',
-    'parameters': [
-        {
-            'name': 'id',
-            'in': 'path',
-            'type': 'string',
-            'required': True,
-            'description': 'ID del usuario'
-        }
-    ],
-    'responses': {
-        200: {
-            'description': 'Usuario eliminado exitosamente'
-        },
-        404: {
-            'description': 'Usuario no encontrado'
-        }
-    }
-})
-def delete_user(id):
-    deleted = UserModel.delete_user(id)
-    if deleted:
-        return jsonify({'message': 'Usuario eliminado exitosamente'}), 200
-    else:
-        return jsonify({'error': 'Usuario no encontrado'}), 404
-
 
 #########################################
 #          RegistroVelocidad            #
@@ -377,4 +361,4 @@ def create_sp_record():
 })
 def obtainallrecords():  
     response = SpeedRecord.get_all_speed_records()
-    return jsonify(response), 201
+    return jsonify(response), 200

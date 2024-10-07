@@ -46,14 +46,14 @@ class UserModel:
         return UserModel.get_user_by_id(result.inserted_id)
 
     @staticmethod
-    def update_user(user_id, data):
+    def update_user(data):
         updated_user = {
             'user': data.get('user'),
             'pwd': data.get('pwd')
         }
-        result = db['sp_users'].update_one({'_id': ObjectId(user_id)}, {'$set': updated_user})
+        result = db['sp_users'].update_one({'_id': ObjectId(data.get('_id'))}, {'$set': updated_user})
         if result.matched_count:
-            return UserModel.get_user_by_id(user_id)
+            return UserModel.get_user_by_id(data.get('_id'))
         return None
 
     @staticmethod

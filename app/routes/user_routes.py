@@ -290,11 +290,15 @@ def update_user():
         }
     }
 })
-def create_sp_record():  
+def create_sp_record():
     data = request.get_json()
-    new_record = SpeedRecord.create_speed_record(data['latitud'],data['longitud'],data['user_id'],data['velocidad'],data['fecha'])
-    return jsonify(new_record), 201
+    required_fields = ['latitud', 'longitud', 'user_id', 'velocidad', 'fecha']
+    missing_fields = [field for field in required_fields if field not in data]
+    if missing_fields:
+        return jsonify({'error': f'Faltan los siguientes parámetros: {", ".join(missing_fields)}'}), 400
 
+    new_record = SpeedRecord.create_speed_record(data['latitud'], data['longitud'], data['user_id'], data['velocidad'], data['fecha'])
+    return jsonify(new_record), 201
 @user_blueprint.route('/get_spdrecords', methods=['GET'])
 @swag_from({
     'tags': ['Velocity Records'],

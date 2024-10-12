@@ -10,9 +10,9 @@ import com.google.android.material.button.MaterialButtonToggleGroup
 
 class InfoActivity : AppCompatActivity() {
 
-    private var roadSelection = 3  // Valor predeterminado 'Alto'
-    private var landmarkSelection = 3  // Valor predeterminado 'Alto'
-    private var labelSelection = 3  // Valor predeterminado 'Alto'
+    private var roadSelection: Int = 3  // Valor predeterminado 'Alto'
+    private var landmarkSelection: Int = 3  // Valor predeterminado 'Alto'
+    private var labelSelection: Int = 3  // Valor predeterminado 'Alto'
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -30,40 +30,61 @@ class InfoActivity : AppCompatActivity() {
         supportActionBar?.setDisplayShowHomeEnabled(true)
     }
 
+    /**
+     * Configurar y actualizar los listeners para los grupos de botones
+     */
     private fun setupToggleGroupListeners() {
+        // Obtener los valores de selección guardados
+        val (savedRoadSelection, savedLandmarkSelection, savedLabelSelection) = loadConfig(this)
+
         // Grupo de Botones "Caminos"
         val roadToggleGroup = findViewById<MaterialButtonToggleGroup>(R.id.roadToggleGroup)
-        roadToggleGroup.check(R.id.roadBtn3)
+        when (savedRoadSelection) {
+            1 -> roadToggleGroup.check(R.id.roadBtn1)
+            2 -> roadToggleGroup.check(R.id.roadBtn2)
+            3 -> roadToggleGroup.check(R.id.roadBtn3)
+        }
+        this.roadSelection = savedRoadSelection
         roadToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
-                roadSelection = when (checkedId) {
+                this.roadSelection = when (checkedId) {
                     R.id.roadBtn1 -> 1  // Bajo
                     R.id.roadBtn2 -> 2  // Medio
                     R.id.roadBtn3 -> 3  // Alto
                     else -> 3
                 }
-                updateMapStyle() // Actualizar despues de cambiar
+                saveConfig() // Actualizar despues de cambiar
             }
         }
 
         // Grupo de Botones "Puntos de Referencia"
         val landmarksToggleGroup = findViewById<MaterialButtonToggleGroup>(R.id.landmarksToggleGroup)
-        landmarksToggleGroup.check(R.id.landmarksBtn3)
+        when (savedLandmarkSelection) {
+            1 -> landmarksToggleGroup.check(R.id.landmarksBtn1)
+            2 -> landmarksToggleGroup.check(R.id.landmarksBtn2)
+            3 -> landmarksToggleGroup.check(R.id.landmarksBtn3)
+        }
+        this.landmarkSelection = savedLandmarkSelection
         landmarksToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
-                landmarkSelection = when (checkedId) {
+                this.landmarkSelection = when (checkedId) {
                     R.id.landmarksBtn1 -> 1  // Bajo
                     R.id.landmarksBtn2 -> 2  // Medio
                     R.id.landmarksBtn3 -> 3  // Alto
                     else -> 3
                 }
-                updateMapStyle() // Actualizar despues de cambiar
+                saveConfig() // Actualizar despues de cambiar
             }
         }
 
         // Grupo de Botones "Etiquetas"
         val labelsToggleGroup = findViewById<MaterialButtonToggleGroup>(R.id.labelsToggleGroup)
-        labelsToggleGroup.check(R.id.labelsBtn3)
+        when (savedLabelSelection) {
+            1 -> labelsToggleGroup.check(R.id.labelsBtn1)
+            2 -> labelsToggleGroup.check(R.id.labelsBtn2)
+            3 -> labelsToggleGroup.check(R.id.labelsBtn3)
+        }
+        this.labelSelection = savedLabelSelection
         labelsToggleGroup.addOnButtonCheckedListener { _, checkedId, isChecked ->
             if (isChecked) {
                 labelSelection = when (checkedId) {
@@ -72,30 +93,45 @@ class InfoActivity : AppCompatActivity() {
                     R.id.labelsBtn3 -> 3  // Alto
                     else -> 3
                 }
-                updateMapStyle() // Actualizar despues de cambiar
+                saveConfig() // Actualizar despues de cambiar
             }
         }
     }
 
-    private fun updateMapStyle() {
-        // Construir el nombre del archivo basado en las selecciones
-        val styleFilename = "map_style_standard_${roadSelection}${landmarkSelection}${labelSelection}.json"
+    /**
+     *  Manejar el clic en el botón de retroceso del Toolbar
+     */
+    override fun onSupportNavigateUp(): Boolean {
+        finish() // Cierra la actividad y regresa a MapsActivity
+        return true
+    }
 
-        // Guardar el nombre del estilo en SharedPreferences
-        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        editor.putString("STYLE_FILENAME", styleFilename)
-        editor.apply()
+    /**
+     * Guardar la configuración seleccionada en
+     * SharedPreferences
+     */
+    private fun saveConfig() {
+        val sharedPref = getSharedPreferences("user_preferences", Context.MODE_PRIVATE)
+        with (sharedPref.edit()) {
+            putInt("road_selection", roadSelection)
+            putInt("landmark_selection", landmarkSelection)
+            putInt("label_selection", labelSelection)
+            apply()
+        }
 
         // Enviar un broadcast para notificar a MapsActivity
         val intent = Intent("com.example.UPDATE_MAP_STYLE")
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-        //sendBroadcast(intent)
     }
-
-    // Manejar el clic en el botón de retroceso del Toolbar
-    override fun onSupportNavigateUp(): Boolean {
-        finish() // Cierra la actividad y regresa a MapsActivity
-        return true
+    /**
+     * Cargar la configuración seleccionada de
+     * SharedPreferences
+     * @return Triple<road, landmark, label>
+     */
+    private fun loadConfig(context: Context): Triple<Int, Int, Int> {
+        val sharedPref = context.getSharedPreferences("user_preferences", Context.MODE_PRIVATE)
+        return Triple(sharedPref.getInt("road_selection", 3),
+                    sharedPref.getInt("landmark_selection", 3),
+                    sharedPref.getInt("label_selection", 3))
     }
 }

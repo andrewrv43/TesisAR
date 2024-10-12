@@ -15,18 +15,12 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.location.LocationListener
 import android.util.Log
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.viewpager2.widget.ViewPager2
-import androidx.fragment.app.Fragment
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 
 import com.google.android.gms.maps.GoogleMap
@@ -44,8 +38,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var map: GoogleMap
     companion object { const val REQUEST_CODE_LOCATION = 1000 }
     private var lastMarker: Marker? = null
-    private var mapStyleFile: String = "map_style_standard_111.json"  // Estilo predeterminado
-    private lateinit var mapStyleReceiver: BroadcastReceiver
+    private var mapStyleReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            // Recargar el estilo del mapa cuando se recibe el broadcast
+            applyMapStyle()
+        }
+    }
     private lateinit var infoBtn: ImageView
 
     /* Variables para sensor de velocidad */
@@ -65,6 +63,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         //viewPager.adapter = adapter
 
         createMapFragment()
+        registerBroadcastReceiver()
         createAcelerometerSensor()
 
         // Obtener referencia al ImageView
@@ -76,9 +75,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             val intent = Intent(this, InfoActivity::class.java)
             startActivity(intent)
         }
-
-        // Registrar el BroadcastReceiver
-        registerMapStyleReceiver()
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -93,23 +89,51 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         enableLocation()
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Registrar el listener del sensor
+        accelerometer?.also { sensor ->
+            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        /*
+        // Verificar si el estilo ha cambiado
+        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
+        val newMapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
+
+        if (newMapStyleFile != mapStyleFile) {
+            mapStyleFile = newMapStyleFile
+            applyMapStyle()
+        }
+        */
+    }
+
+    override fun onPause() {
+        super.onPause()
+        // Detener el sensor cuando la actividad no esté visible
+        sensorManager.unregisterListener(this)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Destruir el BroadcastReceiver
+        LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
+    }
+
     /**
      * Crear fragmento del mapa
      */
     private fun createMapFragment() {
-        // Obtener el nombre del estilo desde SharedPreferences
-        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
-        mapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
-
         val mapFragment: SupportMapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        // Desregistrar el BroadcastReceiver
-        LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
+    /**
+     *  Registra el BroadcastReceiver para recibir actualizaciones de estilo
+     */
+    private fun registerBroadcastReceiver() {
+        val filter = IntentFilter("com.example.UPDATE_MAP_STYLE")
+        LocalBroadcastManager.getInstance(this).registerReceiver(mapStyleReceiver, filter)
     }
 
     /**
@@ -196,56 +220,49 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         speedText.text = "Velocidad: %.2f km/h".format(speedKmh)
     }*/
 
+
+
+
+
+
     /***********************************************************************************************
      *   Estilo del mapa
      **********************************************************************************************/
     /**
      *  Busca y aplica el estilo almacenado en "SharedPreferences"
      */
-
     private fun applyMapStyle() {
-        // Obtener el nombre del estilo desde SharedPreferences
-        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
-        mapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
+        val sharedPref = getSharedPreferences("user_preferences", Context.MODE_PRIVATE)
+        val roadSelection = sharedPref.getInt("road_selection", 3)
+        val landmarkSelection = sharedPref.getInt("landmark_selection", 3)
+        val labelSelection = sharedPref.getInt("label_selection", 3)
+
+        val mapStyleFile = "map_style_standard_${roadSelection}${landmarkSelection}${labelSelection}.json"
 
         try {
-            // Obtener el ID del recurso del archivo de estilo
-            val styleResId = resources.getIdentifier(
-                mapStyleFile.substringBeforeLast(".json"),
-                "raw",
-                packageName
-            )
-
+            // Cargar el estilo desde los recursos (res/raw)
             val success = map.setMapStyle(
                 MapStyleOptions.loadRawResourceStyle(
-                    this, styleResId
+                    this, resources.getIdentifier(
+                        mapStyleFile.substringBeforeLast('.'),
+                        "raw",
+                        packageName
+                    )
                 )
             )
+            println("SE CARGO EL ESTILO: $mapStyleFile ---------------------------------------------")
 
             if (!success) {
                 Log.e("MapsActivity", "Error al cargar el estilo.")
             }
         } catch (e: Resources.NotFoundException) {
-            Log.e("MapsActivity", "No se encontro el estilo.", e)
+            Log.e("MapsActivity", "No se encontro el estilo ${mapStyleFile}.", e)
         }
     }
 
-    /**
-     *  Registra el BroadcastReceiver para recibir actualizaciones de estilo
-     */
 
-    private fun registerMapStyleReceiver() {
-        mapStyleReceiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                // Actualizar el estilo del mapa
-                applyMapStyle()
-            }
-        }
-        val filter = IntentFilter("com.example.UPDATE_MAP_STYLE")
-        LocalBroadcastManager.getInstance(this).registerReceiver(mapStyleReceiver, filter)
-    }
 
-    /**********************************************************************************************/
+
 
 
     /*********************************************************************************************
@@ -264,35 +281,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         // Inicializar el SensorManager y el acelerómetro
         sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-    }
-
-    override fun onResume() {
-        super.onResume()
-        // Registrar el listener del sensor
-        accelerometer?.also { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-        }
-
-        // Aplicar el estilo del mapa al reanudar la actividad
-        //if (::map.isInitialized) {
-            //applyMapStyle()
-        //}
-
-        // Verificar si el estilo ha cambiado
-        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
-        val newMapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
-
-        if (newMapStyleFile != mapStyleFile) {
-            mapStyleFile = newMapStyleFile
-            applyMapStyle()
-        }
-
-    }
-
-    override fun onPause() {
-        super.onPause()
-        // Detener el sensor cuando la actividad no esté visible
-        sensorManager.unregisterListener(this)
     }
 
     /**
@@ -332,7 +320,5 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
     }
 
-    override fun onAccuracyChanged(p0: Sensor?, p1: Int) {
-        // No es necesario implementar este método en este caso
-    }
+    override fun onAccuracyChanged(p0: Sensor?, p1: Int) { /* No es necesario implementar este método */ }
 }

@@ -3,6 +3,7 @@ package ups.tesis.detectoraltavelocidad
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -13,6 +14,7 @@ class InfoActivity : AppCompatActivity() {
     private var roadSelection: Int = 3  // Valor predeterminado 'Alto'
     private var landmarkSelection: Int = 3  // Valor predeterminado 'Alto'
     private var labelSelection: Int = 3  // Valor predeterminado 'Alto'
+    private var darkSwitch: Boolean = false // Valor predeterminado
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -35,7 +37,12 @@ class InfoActivity : AppCompatActivity() {
      */
     private fun setupToggleGroupListeners() {
         // Obtener los valores de selección guardados
-        val (savedRoadSelection, savedLandmarkSelection, savedLabelSelection) = loadConfig(this)
+        val savedConfig = loadConfig(this)
+        val savedRoadSelection = savedConfig.roadSelection
+        val savedLandmarkSelection = savedConfig.landmarkSelection
+        val savedLabelSelection = savedConfig.labelSelection
+        val savedDarkSwitch = savedConfig.darkSwitch
+
 
         // Grupo de Botones "Caminos"
         val roadToggleGroup = findViewById<MaterialButtonToggleGroup>(R.id.roadToggleGroup)
@@ -96,6 +103,14 @@ class InfoActivity : AppCompatActivity() {
                 saveConfig() // Actualizar despues de cambiar
             }
         }
+
+        val darkModeSwitch = findViewById<Switch>(R.id.darkModeSwitch)
+        darkModeSwitch.isChecked = savedDarkSwitch
+        this.darkSwitch = savedDarkSwitch
+        darkModeSwitch.setOnCheckedChangeListener { _, isChecked ->
+            this.darkSwitch = isChecked
+            saveConfig() // Actualizar despues de cambiar
+        }
     }
 
     /**
@@ -116,6 +131,7 @@ class InfoActivity : AppCompatActivity() {
             putInt("road_selection", roadSelection)
             putInt("landmark_selection", landmarkSelection)
             putInt("label_selection", labelSelection)
+            putBoolean("dark_mode", darkSwitch)
             apply()
         }
 
@@ -126,12 +142,22 @@ class InfoActivity : AppCompatActivity() {
     /**
      * Cargar la configuración seleccionada de
      * SharedPreferences
-     * @return Triple<road, landmark, label>
+     * @return MapConfig<road, landmark, label, darkMode>
      */
-    private fun loadConfig(context: Context): Triple<Int, Int, Int> {
+    private fun loadConfig(context: Context): MapConfig {
         val sharedPref = context.getSharedPreferences("user_preferences", Context.MODE_PRIVATE)
-        return Triple(sharedPref.getInt("road_selection", 3),
-                    sharedPref.getInt("landmark_selection", 3),
-                    sharedPref.getInt("label_selection", 3))
+        return MapConfig(
+                        sharedPref.getInt("road_selection", 3),
+                        sharedPref.getInt("landmark_selection", 3),
+                        sharedPref.getInt("label_selection", 3),
+                        sharedPref.getBoolean("dark_mode", false)
+        )
     }
 }
+
+data class MapConfig(
+    val roadSelection: Int,
+    val landmarkSelection: Int,
+    val labelSelection: Int,
+    val darkSwitch: Boolean
+)

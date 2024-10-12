@@ -236,8 +236,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         val roadSelection = sharedPref.getInt("road_selection", 3)
         val landmarkSelection = sharedPref.getInt("landmark_selection", 3)
         val labelSelection = sharedPref.getInt("label_selection", 3)
+        val darkMode = sharedPref.getBoolean("dark_mode", false)
 
-        val mapStyleFile = "map_style_standard_${roadSelection}${landmarkSelection}${labelSelection}.json"
+        val mapStyleFile = if (darkMode) {
+            "map_style_dark_${roadSelection}${landmarkSelection}${labelSelection}.json"
+        } else {
+            "map_style_standard_${roadSelection}${landmarkSelection}${labelSelection}.json"
+        }
+
 
         try {
             // Cargar el estilo desde los recursos (res/raw)

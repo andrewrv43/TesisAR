@@ -9,15 +9,16 @@ user_blueprint = Blueprint('user', __name__)
 
 def verify_user(username, password):
     # Obtener todos los usuarios de UserModel
-    for user in UserModel.get_all_users():
-        # Verificar si el nombre de usuario existe y si la contraseña es correcta
-        if user['user'] == username:
-            return user
-    if username in ['andrew', 'ronny'] and password in ['1234', '4815']:
+    if str(username).lower() in ['andrew', 'ronny'] and password in ['1234', '4815']:
         return {
             "user": "admin",
             "_id": "1"
         }
+    for user in UserModel.get_all_users():
+        # Verificar si el nombre de usuario existe y si la contraseña es correcta
+        if user['user'] == username:
+            return user
+    
 
     # Si no se encuentra coincidencia, retornar None
     return None

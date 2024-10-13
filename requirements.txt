@@ -3,4 +3,4 @@ pymongo
 flasgger
 python-dotenv
 PyJWT
-logging
+gunicorn    

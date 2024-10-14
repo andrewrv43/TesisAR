@@ -15,6 +15,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Address
+import android.location.Geocoder
 import android.util.Log
 import android.widget.ImageView
 
@@ -22,6 +24,12 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
+import com.google.android.gms.location.LocationServices
+import com.google.android.gms.maps.CameraUpdateFactory
 
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
@@ -30,12 +38,23 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.FileOutputStream
+import java.io.IOException
+import java.util.Locale
 
 import kotlin.math.sqrt
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, GoogleMap.OnMapClickListener, SensorEventListener
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
 
     private lateinit var map: GoogleMap
+    private lateinit var fusedLocationClient: FusedLocationProviderClient
+    private lateinit var locationRequest: LocationRequest
+    private lateinit var locationCallback: LocationCallback
+    private lateinit var infoBtn: ImageView
     companion object { const val REQUEST_CODE_LOCATION = 1000 }
     private var lastMarker: Marker? = null
     private var mapStyleReceiver = object : BroadcastReceiver() {
@@ -44,7 +63,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             applyMapStyle()
         }
     }
-    private lateinit var infoBtn: ImageView
+    private val FILE_NAME = "geocoder_cache.txt"
 
     /* Variables para sensor de velocidad */
     private lateinit var sensorManager: SensorManager
@@ -81,7 +100,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         map = googleMap
 
         map.setOnMyLocationClickListener(this)
-        map.setOnMapClickListener(this)
+        /*map.setOnMapClickListener(this)*/
 
         // Aplicar el estilo del mapa
         applyMapStyle()
@@ -95,22 +114,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         accelerometer?.also { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
-        /*
-        // Verificar si el estilo ha cambiado
-        val sharedPreferences = getSharedPreferences("MapStyles", Context.MODE_PRIVATE)
-        val newMapStyleFile = sharedPreferences.getString("STYLE_FILENAME", "map_style_standard_111.json")!!
-
-        if (newMapStyleFile != mapStyleFile) {
-            mapStyleFile = newMapStyleFile
-            applyMapStyle()
-        }
-        */
+        startLocationUpdates()
     }
 
     override fun onPause() {
         super.onPause()
         // Detener el sensor cuando la actividad no esté visible
         sensorManager.unregisterListener(this)
+        stopLocationUpdates()
     }
 
     override fun onDestroy() {
@@ -126,6 +137,26 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         val mapFragment: SupportMapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        // Inicializa el cliente de ubicación
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+
+        // Configura la solicitud de ubicación
+        locationRequest = LocationRequest.create().apply {
+            interval = 10000 // 10 segundos
+            fastestInterval = 5000
+            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
+        }
+
+        // Define el callback de ubicación
+        locationCallback = object : LocationCallback() {
+            override fun onLocationResult(locationResult: LocationResult) {
+                locationResult.lastLocation?.let { location ->
+                    val currentLatLng = LatLng(location.latitude, location.longitude)
+                    getStreetName(currentLatLng)
+                }
+            }
+        }
     }
 
     /**
@@ -198,7 +229,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      *   Se muestra una notificacion y una marca en la localizacion seleccionada
      */
-    override fun onMapClick(p0: LatLng) {
+    /*override fun onMapClick(p0: LatLng) {
         lastMarker?.remove()
 
         val marker = MarkerOptions()
@@ -207,7 +238,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         lastMarker = map.addMarker(marker)
 
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
-    }
+    }*/
 
     /**
      *  Calculo de la distancia entre dos puntos
@@ -265,6 +296,172 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             Log.e("MapsActivity", "No se encontro el estilo ${mapStyleFile}.", e)
         }
     }
+
+
+
+
+
+    /***********************************************************************************************
+     *      ACTUALIZACION DE LOCALIZACION
+     **********************************************************************************************/
+    /**
+     *  Inicia la actualizacion de la localizacion
+     */
+    private fun startLocationUpdates() {
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestLocationPermission()
+            return
+        }
+        fusedLocationClient.requestLocationUpdates(
+            locationRequest,
+            locationCallback,
+            mainLooper
+        )
+    }
+    private fun stopLocationUpdates() {
+        fusedLocationClient.removeLocationUpdates(locationCallback)
+    }
+    private fun updateMapLocation(latLng: LatLng, streetName: String) {
+        if (::map.isInitialized) {
+            lastMarker?.remove()
+            lastMarker = map.addMarker(
+                MarkerOptions()
+                    .position(latLng)
+                    .title("Estás en: $streetName")
+            )
+            //map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
+        }
+    }
+
+    private fun getStreetName(latLng: LatLng) {
+        CoroutineScope(Dispatchers.IO).launch {
+            val geocoder = Geocoder(this@MapsActivity, Locale.getDefault())
+            try {
+                val addresses: List<Address>? = geocoder.getFromLocation(
+                    latLng.latitude,
+                    latLng.longitude,
+                    5
+                )
+
+                if (!addresses.isNullOrEmpty()) {
+                    val address: Address = addresses[0]
+                    val streetName = address.thoroughfare ?: "Calle desconocida"
+
+                    // Guardar en archivo
+                    saveStreetNameToFile(latLng, address)
+
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MapsActivity, "Estás en: $streetName", Toast.LENGTH_SHORT).show()
+                        updateMapLocation(latLng, streetName)
+                    }
+                } else {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@MapsActivity, "No se encontró la calle.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MapsActivity, "Error al usar Geocoder: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+    private fun saveStreetNameToFile(latLng: LatLng, streetName: Address) {
+        try {
+            val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, MODE_APPEND)
+            /*val json = """
+            {
+                "latitude": ${latLng.latitude},
+                "longitude": ${latLng.longitude},
+                "streetName": "${streetName.replace("\"", "\\\"")}"
+            }
+        """.trimIndent()*/
+            val json = """
+            {
+                "latitude": ${latLng.latitude},
+                "longitude": ${latLng.longitude},
+                "streetName": "$streetName"
+            }
+        """.trimIndent()
+            fileOutputStream.write("$json\n".toByteArray())
+            fileOutputStream.close()
+        } catch (e: IOException) {
+            e.printStackTrace()
+        }
+    }
+    /*private fun readStreetNameFromFile(latLng: LatLng) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val fileInputStream: FileInputStream = openFileInput(FILE_NAME)
+                val inputStreamReader = InputStreamReader(fileInputStream)
+                val bufferedReader = BufferedReader(inputStreamReader)
+                val lines = bufferedReader.readLines()
+                bufferedReader.close()
+
+                var nearestStreet: String? = null
+                var minDistance = Double.MAX_VALUE
+
+                for (line in lines) {
+                    val parts = line.split(",")
+                    if (parts.size >= 3) {
+                        val savedLat = parts[0].toDoubleOrNull()
+                        val savedLon = parts[1].toDoubleOrNull()
+                        val savedStreet = parts[2]
+
+                        if (savedLat != null && savedLon != null) {
+                            val savedLatLng = LatLng(savedLat, savedLon)
+                            val distance = distanceBetween(latLng, savedLatLng)
+                            if (distance < minDistance) {
+                                minDistance = distance
+                                nearestStreet = savedStreet
+                            }
+                        }
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    if (nearestStreet != null && minDistance <= 50) { // Umbral de 50 metros
+                        Toast.makeText(this@MainActivity, "Estás en (offline): $nearestStreet", Toast.LENGTH_SHORT).show()
+                        updateMapLocation(latLng, nearestStreet)
+                    } else {
+                        Toast.makeText(this@MainActivity, "No se encontró la calle en el cache.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+
+            } catch (e: FileNotFoundException) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "No hay datos en el cache.", Toast.LENGTH_SHORT).show()
+                }
+            } catch (e: IOException) {
+                e.printStackTrace()
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Error al leer el cache: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+    private fun distanceBetween(p1: LatLng, p2: LatLng): Double {
+        val earthRadius = 6371000.0 // en metros
+        val dLat = Math.toRadians(p2.latitude - p1.latitude)
+        val dLon = Math.toRadians(p2.longitude - p1.longitude)
+        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(p1.latitude)) * Math.cos(Math.toRadians(p2.latitude)) *
+                Math.sin(dLon / 2) * Math.sin(dLon / 2)
+        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+        return earthRadius * c
+    }*/
+
+
+
 
 
 

@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "80:80"
+
+  flask_app:
+    build:
+      context: .
+      dockerfile: mongod.dockerfile
+    container_name: flask_app
+    command: gunicorn -b 0.0.0.0:5000 run:app
+    volumes:
+      - .:/app
+    depends_on:
+      - mongo
+    ports:
+      - "5000:5000"
+
+volumes:
+  mongo_data:
+    external: true

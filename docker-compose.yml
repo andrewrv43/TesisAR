@@ -7,7 +7,7 @@ services:
     volumes:
       - mongo_data:/data/db
     ports:
-      - "80:80"
+      - "80:27017"
 
   flask_app:
     build:

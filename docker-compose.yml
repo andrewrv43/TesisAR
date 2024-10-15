@@ -6,6 +6,7 @@ services:
     container_name: mongo
     volumes:
       - mongo_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro  # Montar el script de inicialización.
     ports:
       - "80:27017"
 
@@ -14,7 +15,7 @@ services:
       context: .
       dockerfile: mongod.dockerfile
     container_name: flask_app
-    command: gunicorn -b 0.0.0.0:5000 run:app
+    command: python run.py
     volumes:
       - .:/app
     depends_on:

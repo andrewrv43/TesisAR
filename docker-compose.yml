@@ -11,7 +11,7 @@ services:
       - "80:27017"
 
   flask_app:
-    enviroment:
+    environment:
       - MONGO_URI=mongodb://mongo:27017/
     image: python:3.9
     container_name: flask_app

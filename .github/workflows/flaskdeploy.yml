@@ -30,6 +30,7 @@ jobs:
           key: ${{ secrets.CONNEC2PEM }}
           script: |
             cd /home/ubuntu/TESIS
+            echo "pwdLocal=${{ secrets.PASSWORDFORJWT }}" > .env
             docker volume create mongo_data || true  # Asegura que el volumen exista.
             docker compose down
             docker compose up -d

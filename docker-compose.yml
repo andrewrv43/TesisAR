@@ -11,17 +11,24 @@ services:
       - "80:27017"
 
   flask_app:
-    build:
-      context: .
-      dockerfile: mongod.dockerfile
+    image: python:3.9
     container_name: flask_app
-    command: python run.py
+    working_dir: /app
     volumes:
       - .:/app
+    command: python run.py
     depends_on:
       - mongo
     ports:
       - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./requirements.txt:/app/requirements.txt
+    build:
+      context: .
+      dockerfile: Dockerfile
+    entrypoint: ["sh", "-c", "pip install -r requirements.txt && python run.py"]
 
 volumes:
   mongo_data:

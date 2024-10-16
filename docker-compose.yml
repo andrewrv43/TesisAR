@@ -26,8 +26,6 @@ services:
       - "5000:5000"
     env_file:
       - .env
-    environment:
-      - PYTHONUNBUFFERED=1
     entrypoint: ["sh", "-c", "pip install -r requirements.txt && python run.py"]
 
 volumes:

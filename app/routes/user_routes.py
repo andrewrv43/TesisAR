@@ -143,7 +143,6 @@ def get_username(username):
 
 # Ruta para crear un nuevo usuario
 @user_blueprint.route('/user', methods=['POST'])
-@token_required
 @swag_from({
     'tags': ['USER'],
     'summary': 'Crear un nuevo usuario',

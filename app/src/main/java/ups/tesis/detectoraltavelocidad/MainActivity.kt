@@ -18,6 +18,13 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.marginBottom
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import retrofit2.Response
+import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
+import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitServiceFactory
+import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
+import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 
 class MainActivity : AppCompatActivity() {
     lateinit var btnLogin:Button
@@ -48,7 +55,9 @@ class MainActivity : AppCompatActivity() {
         //#endregion
         //# region Funciones
         btnLogin.setOnClickListener{
-            btnLogginOnClick()
+            lifecycleScope.launch {
+                btnLogginOnClick()
+            }
         }
         crearCuentatxt.setOnClickListener{
             btnCrearCuentaOnClick()
@@ -83,7 +92,7 @@ class MainActivity : AppCompatActivity() {
             insets
         }
     }
-    private fun btnLogginOnClick() {
+    private suspend fun btnLogginOnClick() {
         if(estado){
             println("Funciona y el usuario es: ${struser.text}")
             val intent=Intent(this, MapsActivity::class.java)
@@ -110,8 +119,25 @@ class MainActivity : AppCompatActivity() {
             creacion_login()
         }
     }
-    private fun crearCuenta(): Boolean {
-        println("CREACION DE CUENTA")
+    private suspend fun crearCuenta(): Boolean {
+        try {
+            val retrofitService = RetrofitServiceFactory.makeRetrofitService("")
+            val creationReq = userCreate(
+                user = "Andrew",
+                pwd = "1234"
+            )
+            try {
+                val response: resultCreacion = retrofitService.createAccount(creationReq)
+                println(response)
+            } catch (e: Exception) {
+                println(e)
+            }
+
+        }
+        catch (e:Exception){
+
+        }
+
         return true
     }
     private fun creacion_login(proc:Int=0){

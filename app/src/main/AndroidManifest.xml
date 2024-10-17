@@ -13,6 +13,7 @@ xmlns:tools="http://schemas.android.com/tools">
     android:roundIcon="@mipmap/ic_launcher_round"
     android:supportsRtl="true"
     android:theme="@style/Theme.DetectorAltaVelocidad"
+    android:usesCleartextTraffic="true"
     tools:targetApi="31">
 
     <!--

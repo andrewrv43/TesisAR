@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".InfoActivity">
+
+    <androidx.appcompat.widget.Toolbar
+        android:id="@+id/toolbar"
+        android:layout_width="0dp"
+        android:layout_height="?attr/actionBarSize"
+        android:background="?attr/colorPrimary"
+        android:title="Ajustes generales"
+        android:titleTextColor="@android:color/white"
+        app:navigationIcon="@drawable/back"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/configTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Configuración de mapa"
+        android:textSize="22sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/toolbar"
+        android:layout_marginTop="16dp" />
+
+    <Switch
+        android:id="@+id/darkModeSwitch"
+        android:layout_width="0dp"
+        android:layout_height="48dp"
+        android:text="Modo Oscuro"
+        android:textSize="22sp"
+        android:layout_marginHorizontal="50sp"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/configTextView"
+        android:layout_marginTop="35dp" />
+
+    <!-- BOTONES DE CAMINOS -->
+    <TextView
+        android:id="@+id/roadText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Caminos"
+        android:textSize="24sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/darkModeSwitch"
+        android:layout_marginTop="16dp" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/roadToggleGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/roadText"
+        app:singleSelection="true"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/roadBtn1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Bajo" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/roadBtn2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Medio" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/roadBtn3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Alto" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+
+
+    <!-- BOTONES DE PUNTOS DE REFERENCIA -->
+    <TextView
+        android:id="@+id/landmarkText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Puntos de Referencia"
+        android:textSize="24sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/roadToggleGroup"
+        android:layout_marginTop="16dp" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/landmarksToggleGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/landmarkText"
+        app:singleSelection="true"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/landmarksBtn1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Bajo" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/landmarksBtn2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Medio" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/landmarksBtn3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Alto" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+
+
+    <!-- BOTONES DE ETIQUETAS -->
+    <TextView
+        android:id="@+id/labelText"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Etiquetas"
+        android:textSize="24sp"
+        android:textColor="@android:color/black"
+        android:gravity="center"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/landmarksToggleGroup"
+        android:layout_marginTop="16dp" />
+
+    <com.google.android.material.button.MaterialButtonToggleGroup
+        android:id="@+id/labelsToggleGroup"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/labelText"
+        app:singleSelection="true"
+        android:layout_marginTop="8dp">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/labelsBtn1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Bajo" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/labelsBtn2"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Medio" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/labelsBtn3"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:text="Alto" />
+    </com.google.android.material.button.MaterialButtonToggleGroup>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

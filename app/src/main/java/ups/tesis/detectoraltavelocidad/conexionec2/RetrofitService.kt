@@ -8,18 +8,20 @@ import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
 import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 
 interface RetrofitService {
-//    @GET("login")
-//    suspend fun getTok(@Body request: tokenRequest): getTok
+    @POST("login")
+    suspend fun getTok(@Body request: tokenRequest): Response<getTok>
 
     @POST("user")
-    suspend fun createAccount(@Body request: userCreate): resultCreacion
+    suspend fun createAccount(@Body request: userCreate): Response<resultCreacion>
 }
+
 
 object RetrofitServiceFactory {
     fun makeRetrofitService(token: String): RetrofitService {

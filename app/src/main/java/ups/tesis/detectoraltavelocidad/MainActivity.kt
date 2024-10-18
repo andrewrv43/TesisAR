@@ -23,7 +23,9 @@ import kotlinx.coroutines.launch
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitServiceFactory
+import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
+import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 
 class MainActivity : AppCompatActivity() {
@@ -33,7 +35,6 @@ class MainActivity : AppCompatActivity() {
     lateinit var crearCuentatxt: TextView
     lateinit var layourcontenedor:LinearLayout
     lateinit var confpass:EditText
-    lateinit var spacepassconf:Space
     var estado:Boolean = true
     lateinit var textoTitulo:TextView
 
@@ -49,7 +50,6 @@ class MainActivity : AppCompatActivity() {
         crearCuentatxt.text = Html.fromHtml("<u>Crear Cuenta</u>",1)
         layourcontenedor=findViewById(R.id.layoutContenedor)
         confpass=findViewById(R.id.passwordconf)
-        spacepassconf=findViewById(R.id.spacepassconf)
         textoTitulo=findViewById(R.id.textoTitulo)
         textoTitulo.setText(R.string.txtLogin)
         //#endregion
@@ -123,49 +123,61 @@ class MainActivity : AppCompatActivity() {
         try {
             val retrofitService = RetrofitServiceFactory.makeRetrofitService("")
             val creationReq = userCreate(
-                user = "Andrew",
-                pwd = "1234"
+                user = struser.text.toString(),
+                pwd = strupass.text.toString()
             )
-            try {
-                val response: resultCreacion = retrofitService.createAccount(creationReq)
-                println(response)
-            } catch (e: Exception) {
-                println(e)
+            val obtToken = tokenRequest(
+                username = struser.text.toString(),
+                password = strupass.text.toString()
+            )
+
+            lifecycleScope.launch {
+                try {
+                    val response: Response<resultCreacion> = retrofitService.createAccount(creationReq)
+                    if (response.isSuccessful) {
+                        val result = response.body()
+                        result?.let {
+                            println("Cuenta creada exitosamente: ${it.user}, ID: ${it.id}")
+                        }
+                        try {
+                            val response: Response<getTok> = retrofitService.getTok(obtToken)
+                            if (response.isSuccessful) {
+                                val result = response.body()
+                                result?.let {
+                                    println("Token Obtenido exitosamente: ${it.token}")
+                                }
+                            }
+                        }catch (e:Exception){
+                            println("Error en la obtencion de token: Código ${response.code()} - ${response.message()}")
+                        }
+
+                    } else {
+                        println("Error en la creación: Código ${response.code()} - ${response.message()}")
+                    }
+                } catch (e: Exception) {
+                    println("Error de red: ${e.message}")
+                }
             }
-
+        } catch (e: Exception) {
+            println("Error al preparar la solicitud: ${e.message}")
         }
-        catch (e:Exception){
-
-        }
-
         return true
     }
-    private fun creacion_login(proc:Int=0){
-        if (proc==1){
-            //crear cuenta
-            confpass.visibility= View.VISIBLE
-            spacepassconf.visibility=View.VISIBLE
+    private fun creacion_login(proc: Int = 0) {
+        if (proc == 1) {
+            // Crear cuenta
+            confpass.visibility = View.VISIBLE
             btnLogin.setText(R.string.txtCrearCuenta)
             textoTitulo.setText(R.string.txtCrearCuenta)
-            estado=false
-            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtLogin)}</u>",1)
-            layourcontenedor.layoutParams.height=(300*this.resources.displayMetrics.density).toInt()
-            val params = layourcontenedor.layoutParams as ViewGroup.MarginLayoutParams
-            params.setMargins(params.leftMargin, params.topMargin, params.rightMargin, (211*this.resources.displayMetrics.density).toInt())
-            layourcontenedor.layoutParams = params
-
-        }else{
-            //inicio sesion
-            confpass.visibility= View.GONE
-            spacepassconf.visibility=View.GONE
+            estado = false
+            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtLogin)}</u>", 1)
+        } else {
+            // Iniciar sesión
+            confpass.visibility = View.GONE
             btnLogin.setText(R.string.txtLogin)
             textoTitulo.setText(R.string.txtLogin)
-            estado=true
-            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtCrearCuenta)}</u>",1)
-            val params = layourcontenedor.layoutParams as ViewGroup.MarginLayoutParams
-            layourcontenedor.layoutParams.height=ViewGroup.LayoutParams.WRAP_CONTENT
-            params.setMargins(params.leftMargin, params.topMargin, params.rightMargin, (254*this.resources.displayMetrics.density).toInt())
-            layourcontenedor.layoutParams = params
+            estado = true
+            crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtCrearCuenta)}</u>", 1)
         }
     }
     private fun alertBox(titulo:String, texto: Int, btnTxt:String){

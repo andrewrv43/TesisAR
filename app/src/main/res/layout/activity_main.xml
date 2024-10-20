@@ -6,7 +6,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/logo_app_tesis"
+    android:background="@drawable/dallebackground"
     tools:context=".MainActivity">
 
     <!-- Guidelines to divide the screen and keep UI flexible -->

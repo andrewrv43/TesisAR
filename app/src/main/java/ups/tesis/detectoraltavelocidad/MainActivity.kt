@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Space
 import android.widget.TextView
+import android.widget.Toast
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
@@ -19,7 +20,9 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.marginBottom
 import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitServiceFactory
@@ -37,8 +40,10 @@ class MainActivity : AppCompatActivity() {
     lateinit var confpass:EditText
     var estado:Boolean = true
     lateinit var textoTitulo:TextView
-
+    lateinit var usrInfo:MutableMap<String, Any>
+    lateinit var retrofitService:RetrofitService
     override fun onCreate(savedInstanceState: Bundle?) {
+        initializeRetrofitService("")
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
@@ -120,49 +125,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private suspend fun crearCuenta(): Boolean {
-        try {
-            val retrofitService = RetrofitServiceFactory.makeRetrofitService("")
-            val creationReq = userCreate(
-                user = struser.text.toString(),
-                pwd = strupass.text.toString()
-            )
-            val obtToken = tokenRequest(
-                username = struser.text.toString(),
-                password = strupass.text.toString()
-            )
-
-            lifecycleScope.launch {
-                try {
-                    val response: Response<resultCreacion> = retrofitService.createAccount(creationReq)
-                    if (response.isSuccessful) {
-                        val result = response.body()
-                        result?.let {
-                            println("Cuenta creada exitosamente: ${it.user}, ID: ${it.id}")
-                        }
-                        try {
-                            val response: Response<getTok> = retrofitService.getTok(obtToken)
-                            if (response.isSuccessful) {
-                                val result = response.body()
-                                result?.let {
-                                    println("Token Obtenido exitosamente: ${it.token}")
-                                }
-                            }
-                        }catch (e:Exception){
-                            println("Error en la obtencion de token: Código ${response.code()} - ${response.message()}")
-                        }
-
-                    } else {
-                        println("Error en la creación: Código ${response.code()} - ${response.message()}")
-                    }
-                } catch (e: Exception) {
-                    println("Error de red: ${e.message}")
+        val creationReq = userCreate(
+            user = struser.text.toString(),
+            pwd = strupass.text.toString()
+        )
+        val response = makeCreateAccountRequest(creationReq)
+        return response?.let {
+            if (it.isSuccessful) {
+                val result = it.body()
+                result?.let { res ->
+                    println("Cuenta creada exitosamente: ${res.user}, ID: ${res.id}")
+                    usrInfo = mutableMapOf("id" to res.id, "user" to res.user)
+                    val obtToken = tokenRequest(
+                        username = struser.text.toString(),
+                        password = strupass.text.toString()
+                    )
+                    makeGetTokenRequest(obtToken)
                 }
+                true
+            } else {
+                println("Error en la creación: Código ${it.code()} - ${it.message()}")
+                false
             }
-        } catch (e: Exception) {
-            println("Error al preparar la solicitud: ${e.message}")
-        }
-        return true
+        } ?: false
     }
+
     private fun creacion_login(proc: Int = 0) {
         if (proc == 1) {
             // Crear cuenta
@@ -190,4 +177,56 @@ class MainActivity : AppCompatActivity() {
         }
         artDialogBuilder.create().show()
     }
+    private fun initializeRetrofitService(token: String="") {
+        retrofitService = RetrofitServiceFactory.makeRetrofitService(token)
+    }
+    private suspend fun makeCreateAccountRequest(request: userCreate): Response<resultCreacion>? {
+        return try {
+            val response = retrofitService.createAccount(request)
+
+            if (response.isSuccessful) {
+                return response
+            } else {
+                withContext(Dispatchers.Main) {
+                    when (response.code()) {
+                        409 -> {
+                            Toast.makeText(this@MainActivity, "Este nombre de usuario ya existe, por favor ingrese otro.", Toast.LENGTH_SHORT).show()
+                        }
+                        else -> {
+                            Toast.makeText(this@MainActivity, "Error al crear la cuenta, por favor intente de nuevo.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+                null
+            }
+        } catch (e: Exception) {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(this@MainActivity, "Error de red: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+            null
+        }
+    }
+
+    private suspend fun makeGetTokenRequest(request: tokenRequest) {
+        try {
+        val response: Response<getTok> = retrofitService.getTok(request)
+        if (response.isSuccessful) {
+            val responseBody = response.body()
+            responseBody?.let {
+                usrInfo["token"] = it.token
+                println("Token Obtenido exitosamente: ${it.token}")
+                initializeRetrofitService(it.token)
+            } ?: run {
+                println("El cuerpo de la respuesta es nulo")
+            }
+        } else {
+            println("Error en la obtención de token: Código ${response.code()} - ${response.message()}")
+        }
+    } catch (e: Exception) {
+            Toast.makeText(this@MainActivity, "Error de autenticación Inicie Sesión nuevamente por favor", Toast.LENGTH_SHORT).show()
+    }
+
+    }
+
+
 }

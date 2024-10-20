@@ -13,6 +13,8 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
 import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
+import java.util.concurrent.TimeUnit
+import okhttp3.logging.HttpLoggingInterceptor
 
 interface RetrofitService {
     @POST("login")
@@ -25,10 +27,19 @@ interface RetrofitService {
 
 object RetrofitServiceFactory {
     fun makeRetrofitService(token: String): RetrofitService {
+        val loggingInterceptor = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
         val client = OkHttpClient.Builder()
+            .connectTimeout(5, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor(loggingInterceptor)
             .addInterceptor { chain ->
                 val request: Request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")
+                    .addHeader("Connection", "close")  // Añadir "Connection: close"
                     .build()
                 chain.proceed(request)
             }
@@ -42,3 +53,4 @@ object RetrofitServiceFactory {
             .create(RetrofitService::class.java)
     }
 }
+

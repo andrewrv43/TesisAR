@@ -1,0 +1,36 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - ms/general
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Copy files to EC2
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.CONNECTURL }}
+          username: ubuntu
+          key: ${{ secrets.CONNEC2PEM }}
+          source: "."
+          target: "/home/ubuntu/TESIS"
+
+      - name: SSH and Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.4
+        with:
+          host: ${{ secrets.CONNECTURL }}
+          username: ubuntu
+          key: ${{ secrets.CONNEC2PEM }}
+          script: |
+            cd /home/ubuntu/TESIS
+            echo "pwdLocal=${{ secrets.PASSWORDFORJWT }}" > .env
+            docker volume create mongo_data || true  # Asegura que el volumen exista.
+            docker compose down
+            docker compose up -d

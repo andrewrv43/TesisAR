@@ -4,11 +4,14 @@ services:
   mongo:
     image: mongo:latest
     container_name: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
     volumes:
       - mongo_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro  # Montar el script de inicialización.
     ports:
-      - "80:27017"
+      - "27017:27017"
 
   flask_app:
     environment:

@@ -1,4 +1,4 @@
 from pymongo import MongoClient
-
-client = MongoClient('mongodb://mongo:27017/')
+import os
+client = MongoClient(os.getenv('MONGO_URI'))
 db = client['sp_base']

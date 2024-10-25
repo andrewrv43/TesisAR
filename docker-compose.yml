@@ -15,7 +15,7 @@ services:
 
   flask_app:
     environment:
-      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/
     image: python:3.9
     container_name: flask_app
     working_dir: /app

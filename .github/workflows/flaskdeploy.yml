@@ -33,6 +33,7 @@ jobs:
             echo "pwdLocal=${{ secrets.PASSWORDFORJWT }}" > .env
             echo "MONGO_INITDB_ROOT_USERNAME=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}" >> .env
             echo "MONGO_INITDB_ROOT_PASSWORD=${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}" >> .env
+            echo "Credenciales=${{ secrets.MONGO_INITDB_ROOT_USERNAME }}&&${{ secrets.MONGO_INITDB_ROOT_PASSWORD }}&&" >> ignore.txt
             docker volume create mongo_data || true  # Asegura que el volumen exista.
             docker compose down
             docker compose up -d

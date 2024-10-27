@@ -31,7 +31,7 @@ def login():
         token = jwt.encode({
             'user': user['user'],
             'id': user['id'],
-            'exp': datetime.datetime.utcnow() + datetime.timedelta(minutes=30)
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(days=7)
         }, Config.SECRET_KEY, algorithm='HS256')
         return jsonify({'token': token})
     return jsonify({'message': 'Usuario o contraseña incorrectos'}), 401

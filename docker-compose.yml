@@ -19,6 +19,7 @@ services:
     volumes:
       - .:/app
       - ./requirements.txt:/app/requirements.txt
+      - flask_logs:/app/logs  # Montar volumen para logs
     command: python run.py
     depends_on:
       - mongo
@@ -31,3 +32,4 @@ services:
 volumes:
   mongo_data:
     external: true
+  flask_logs:

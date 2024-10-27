@@ -19,10 +19,15 @@ def create_app():
 # Cargar la configuración desde config.py
     app.config.from_object(Config)
     Config.init_app(app)
-    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(message)s', handlers=[
-        RotatingFileHandler("app.log", maxBytes=10000, backupCount=3),
+    logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(message)s',
+    handlers=[
+        RotatingFileHandler("/app/logs/app.log", maxBytes=10000, backupCount=3),  # Ruta actualizada
         logging.StreamHandler()
-    ])
+    ]
+)
+
 
     app.logger.info("Logging forced at initialization.")
     return app

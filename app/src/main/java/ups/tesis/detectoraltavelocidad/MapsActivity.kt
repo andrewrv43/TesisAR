@@ -29,8 +29,7 @@ import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
-
+import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
@@ -42,28 +41,37 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.IOException
+import java.io.InputStreamReader
 import java.util.Locale
-
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
 import kotlin.math.sqrt
+
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
 
     private lateinit var map: GoogleMap
+    private lateinit var infoBtn: ImageView
+
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
-    private lateinit var infoBtn: ImageView
+
     companion object { const val REQUEST_CODE_LOCATION = 1000 }
-    private var lastMarker: Marker? = null
+
     private var mapStyleReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             // Recargar el estilo del mapa cuando se recibe el broadcast
             applyMapStyle()
         }
     }
-    private val FILE_NAME = "geocoder_cache.txt"
 
     /* Variables para sensor de velocidad */
     private lateinit var sensorManager: SensorManager
@@ -84,6 +92,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         createMapFragment()
         registerBroadcastReceiver()
         createAcelerometerSensor()
+
+        loadGeoJson() // Carga de mapa de Quito JSON
 
         // Obtener referencia al ImageView
         infoBtn = findViewById(R.id.infoBtn)
@@ -142,18 +152,22 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Configura la solicitud de ubicación
+        /* DEPRECATED
         locationRequest = LocationRequest.create().apply {
             interval = 10000 // 10 segundos
             fastestInterval = 5000
             priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }
+        }*/
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
+            .setMinUpdateIntervalMillis(5000)
+            .build()
 
         // Define el callback de ubicación
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
                     val currentLatLng = LatLng(location.latitude, location.longitude)
-                    getStreetName(currentLatLng)
+                    getCurrentLocation(currentLatLng)
                 }
             }
         }
@@ -304,6 +318,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /***********************************************************************************************
      *      ACTUALIZACION DE LOCALIZACION
      **********************************************************************************************/
+
+    private val FILE_NAME = "geocoder_cache.txt"
+    private var lastMarker: Marker? = null
+
     /**
      *  Inicia la actualizacion de la localizacion
      */
@@ -339,15 +357,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             //map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
         }
     }
-
-    private fun getStreetName(latLng: LatLng) {
+    /*
+    private fun getCurrentLocation(latLng: LatLng) {
         CoroutineScope(Dispatchers.IO).launch {
             val geocoder = Geocoder(this@MapsActivity, Locale.getDefault())
             try {
                 val addresses: List<Address>? = geocoder.getFromLocation(
                     latLng.latitude,
                     latLng.longitude,
-                    5
+                    2
                 )
 
                 if (!addresses.isNullOrEmpty()) {
@@ -373,17 +391,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                 }
             }
         }
-    }
+    }*/
     private fun saveStreetNameToFile(latLng: LatLng, streetName: Address) {
         try {
             val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, MODE_APPEND)
-            /*val json = """
-            {
-                "latitude": ${latLng.latitude},
-                "longitude": ${latLng.longitude},
-                "streetName": "${streetName.replace("\"", "\\\"")}"
-            }
-        """.trimIndent()*/
             val json = """
             {
                 "latitude": ${latLng.latitude},
@@ -397,68 +408,107 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             e.printStackTrace()
         }
     }
-    /*private fun readStreetNameFromFile(latLng: LatLng) {
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val fileInputStream: FileInputStream = openFileInput(FILE_NAME)
-                val inputStreamReader = InputStreamReader(fileInputStream)
-                val bufferedReader = BufferedReader(inputStreamReader)
-                val lines = bufferedReader.readLines()
-                bufferedReader.close()
+    /**
+     * ---------------------------------------------------------------------------------------------------------------------------------------------
+     * FEATURE IMPLEMENTACION DE DETECCION DE UBICACION POR MAPA LOCAL
+     * ---------------------------------------------------------------------------------------------------------------------------------------------
+     */
+    private lateinit var geoJsonData: JSONArray
+    // Cargar mapa de calles de Quito
+    private fun loadGeoJson() {
+        try {
+            val inputStream = assets.open("quito01.geojson")
+            val bufferedReader = BufferedReader(InputStreamReader(inputStream))
+            val geoJsonString = bufferedReader.use { it.readText() }
+            val geoJsonObject = JSONObject(geoJsonString)
+            geoJsonData = geoJsonObject.getJSONArray("features")
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+    // Encontrar la calle mas cercana por ubicacion
+    private fun findNearestRoadSegment(latLng: LatLng): JSONObject? {
+        var nearestFeature: JSONObject? = null
+        var minDistance = Double.MAX_VALUE
 
-                var nearestStreet: String? = null
-                var minDistance = Double.MAX_VALUE
+        for (i in 0 until geoJsonData.length()) {
+            val feature = geoJsonData.getJSONObject(i)
+            val geometry = feature.getJSONObject("geometry")
+            val geometryType = geometry.getString("type")
 
-                for (line in lines) {
-                    val parts = line.split(",")
-                    if (parts.size >= 3) {
-                        val savedLat = parts[0].toDoubleOrNull()
-                        val savedLon = parts[1].toDoubleOrNull()
-                        val savedStreet = parts[2]
+            if (geometryType == "LineString") {
+                val coordinates = geometry.getJSONArray("coordinates")
 
-                        if (savedLat != null && savedLon != null) {
-                            val savedLatLng = LatLng(savedLat, savedLon)
-                            val distance = distanceBetween(latLng, savedLatLng)
-                            if (distance < minDistance) {
-                                minDistance = distance
-                                nearestStreet = savedStreet
-                            }
-                        }
+                // Recorremos los puntos del LineString
+                for (j in 0 until coordinates.length()) {
+                    val point = coordinates.getJSONArray(j)
+                    val lon = point.getDouble(0)
+                    val lat = point.getDouble(1)
+
+                    val distance = haversine(latLng.latitude, latLng.longitude, lat, lon)
+                    if (distance < minDistance) {
+                        minDistance = distance
+                        nearestFeature = feature
                     }
-                }
-
-                withContext(Dispatchers.Main) {
-                    if (nearestStreet != null && minDistance <= 50) { // Umbral de 50 metros
-                        Toast.makeText(this@MainActivity, "Estás en (offline): $nearestStreet", Toast.LENGTH_SHORT).show()
-                        updateMapLocation(latLng, nearestStreet)
-                    } else {
-                        Toast.makeText(this@MainActivity, "No se encontró la calle en el cache.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-
-            } catch (e: FileNotFoundException) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "No hay datos en el cache.", Toast.LENGTH_SHORT).show()
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Error al leer el cache: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
+
+        // Rango umbral minimo en metros
+        val distanceThreshold = 50.0 // metros
+        return if (minDistance <= distanceThreshold) nearestFeature else null
     }
-    private fun distanceBetween(p1: LatLng, p2: LatLng): Double {
-        val earthRadius = 6371000.0 // en metros
-        val dLat = Math.toRadians(p2.latitude - p1.latitude)
-        val dLon = Math.toRadians(p2.longitude - p1.longitude)
-        val a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(p1.latitude)) * Math.cos(Math.toRadians(p2.latitude)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2)
-        val c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-        return earthRadius * c
-    }*/
+    // Función Haversine para calcular la distancia entre dos puntos en una esfera
+    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371000.0 // Radio de la Tierra en metros
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2).pow(2.0) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2.0)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+
+        return R * c
+    }
+    private fun getCurrentLocation(latLng: LatLng) {
+        // Cargar JSON
+        if (!::geoJsonData.isInitialized) {
+            loadGeoJson()
+        }
+        // Buscar el segmento de carretera más cercano
+        val nearestFeature = findNearestRoadSegment(latLng)
+
+        if (nearestFeature != null) {
+            val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
+            val maxSpeed = getMaxSpeed(nearestFeature)
+
+            runOnUiThread {
+                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed", Toast.LENGTH_LONG).show()
+                updateMapLocation(latLng, streetName)
+            }
+        } else {
+            runOnUiThread {
+                Toast.makeText(this, "No se encontró información de la calle.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+    // Establecer limites de velocidad por tipos de calles
+    private fun getMaxSpeed(feature: JSONObject): String {
+        val properties = feature.getJSONObject("properties")
+        val maxSpeed = properties.optString("maxspeed", "")
+        if (maxSpeed.isNotEmpty()) {
+            return maxSpeed
+        } else {
+            val highwayType = properties.optString("highway", "")
+            // Puedes definir límites de velocidad por defecto según el tipo de carretera
+            return when (highwayType) {
+                "primary" -> "90 km/h"
+                "secondary" -> "50 km/h"
+                "tertiary" -> "30 km/h"
+                "residential" -> "30 km/h"
+                else -> "Desconocido"
+            }
+        }
+    }
+
 
 
 
@@ -495,7 +545,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private var az: Double = 0.0
 
     // Tiempo inicial
-    var lastTimestamp = 0L
+    private var lastTimestamp = 0L
     override fun onSensorChanged(event: SensorEvent) {
         if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
             ax = event.values[0].toDouble()

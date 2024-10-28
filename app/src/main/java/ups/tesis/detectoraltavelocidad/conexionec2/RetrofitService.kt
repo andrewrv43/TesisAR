@@ -1,5 +1,6 @@
 package ups.tesis.detectoraltavelocidad.conexionec2
 
+
 import retrofit2.Retrofit
 import retrofit2.http.POST
 import retrofit2.http.GET
@@ -46,7 +47,7 @@ object RetrofitServiceFactory {
             .build()
 
         return Retrofit.Builder()
-            .baseUrl("http://18.208.131.223:5000/")
+            .baseUrl("http://98.81.148.196:5000/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

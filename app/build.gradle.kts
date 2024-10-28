@@ -37,6 +37,13 @@ android {
     buildFeatures {
         viewBinding = true
     }
+    sourceSets {
+        getByName("main") {
+            assets {
+                srcDirs("src\\main\\assets", "src\\main\\assets")
+            }
+        }
+    }
 }
 
 dependencies {
@@ -47,9 +54,17 @@ dependencies {
     implementation(libs.androidx.activity)
     implementation(libs.androidx.constraintlayout)
     implementation(libs.play.services.maps)
+    implementation(libs.androidx.fragment)
+    implementation("com.google.android.material:material")
+    implementation("com.google.android.gms:play-services-maps:17.0.0")
+    implementation(libs.androidx.viewpager2)
+    implementation(libs.play.services.location)
+    implementation ("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation ("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation ("com.squareup.okhttp3:okhttp:4.9.1")
+    implementation ("com.squareup.okhttp3:logging-interceptor:4.9.1")
+    implementation ("androidx.constraintlayout:constraintlayout:2.1.4")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-    implementation("com.google.android.gms:play-services-maps:19.0.0")
-
 }

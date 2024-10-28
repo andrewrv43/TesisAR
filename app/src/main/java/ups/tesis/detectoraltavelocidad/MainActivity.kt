@@ -104,7 +104,7 @@ class MainActivity : AppCompatActivity() {
                 username = struser.text.toString(),
                 password = strupass.text.toString()
             )
-            // ToDo Eliminar el admin como iniciar sesion esta por ahora para eliminar la verificacion obligatoria
+            // TODO: Eliminar el admin como iniciar sesion esta por ahora para eliminar la verificacion obligatoria
             if (makeGetTokenRequest(loginReq) || struser.text.toString()=="admin"){
                 val intent=Intent(this, MapsActivity::class.java)
                 startActivity(intent)

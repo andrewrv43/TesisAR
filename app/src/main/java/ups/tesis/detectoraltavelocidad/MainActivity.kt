@@ -23,6 +23,7 @@ import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitServiceFactory
@@ -40,7 +41,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var confpass:EditText
     var estado:Boolean = true
     lateinit var textoTitulo:TextView
-    lateinit var usrInfo:MutableMap<String, Any>
+    var usrInfo:MutableMap<String, Any> = mutableMapOf()
     lateinit var retrofitService:RetrofitService
     override fun onCreate(savedInstanceState: Bundle?) {
         initializeRetrofitService("")
@@ -99,17 +100,19 @@ class MainActivity : AppCompatActivity() {
     }
     private suspend fun btnLogginOnClick() {
         if(estado){
-            println("Funciona y el usuario es: ${struser.text}")
-            val intent=Intent(this, MapsActivity::class.java)
-            startActivity(intent)
+            val loginReq = tokenRequest(
+                username = struser.text.toString(),
+                password = strupass.text.toString()
+            )
+            // ToDo Eliminar el admin como iniciar sesion esta por ahora para eliminar la verificacion obligatoria
+            if (makeGetTokenRequest(loginReq) || struser.text.toString()=="admin"){
+                val intent=Intent(this, MapsActivity::class.java)
+                startActivity(intent)
+            }
         }else{
-            //logica para crear cuenta
            if(confpass.text.toString()==strupass.text.toString()){
                if(crearCuenta()){
-                   //
                    creacion_login()
-
-
                }
            }else{
                alertBox(titulo = "ALERTA", texto = R.string.txtContraseñaNoCoincide, btnTxt = "Continuar")
@@ -136,11 +139,6 @@ class MainActivity : AppCompatActivity() {
                 result?.let { res ->
                     println("Cuenta creada exitosamente: ${res.user}, ID: ${res.id}")
                     usrInfo = mutableMapOf("id" to res.id, "user" to res.user)
-                    val obtToken = tokenRequest(
-                        username = struser.text.toString(),
-                        password = strupass.text.toString()
-                    )
-                    makeGetTokenRequest(obtToken)
                 }
                 true
             } else {
@@ -207,26 +205,56 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun makeGetTokenRequest(request: tokenRequest) {
-        try {
-        val response: Response<getTok> = retrofitService.getTok(request)
-        if (response.isSuccessful) {
-            val responseBody = response.body()
-            responseBody?.let {
-                usrInfo["token"] = it.token
-                println("Token Obtenido exitosamente: ${it.token}")
-                initializeRetrofitService(it.token)
-            } ?: run {
-                println("El cuerpo de la respuesta es nulo")
+    private suspend fun makeGetTokenRequest(request: tokenRequest): Boolean {
+        return try {
+            val response: Response<getTok> = retrofitService.getTok(request)
+            if (response.isSuccessful) {
+                val responseBody = response.body()
+                responseBody?.let {
+                    usrInfo["token"] = it.token
+                    println("Token obtenido exitosamente: ${it.token}")
+                    initializeRetrofitService(it.token)
+                    true
+                } ?: run {
+                    println("El cuerpo de la respuesta es nulo")
+                    false
+                }
+            } else {
+                when (response.code()) {
+                    401 -> {
+                        // Manejo específico para error 401
+                        val errorResponse = response.errorBody()?.string()
+                        errorResponse?.let {
+                            val errorMessage = JSONObject(it).optString("message", "Usuario o contraseña incorrectos")
+                            println("Error de autenticación: $errorMessage")
+                            Toast.makeText(
+                                this@MainActivity,
+                                "Error: $errorMessage",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    }
+                    else -> {
+                        // Manejo de otros códigos de error
+                        println("Error en la obtención de token: Código ${response.code()} - ${response.message()}")
+                        Toast.makeText(
+                            this@MainActivity,
+                            "Error desconocido. Código: ${response.code()}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+                false
             }
-        } else {
-            println("Error en la obtención de token: Código ${response.code()} - ${response.message()}")
+        } catch (e: Exception) {
+            // Manejo de excepciones
+            println("Excepción: ${e.message}")
+            Toast.makeText(this@MainActivity, "Error de autenticación. Intente nuevamente.", Toast.LENGTH_SHORT).show()
+            false
         }
-    } catch (e: Exception) {
-            Toast.makeText(this@MainActivity, "Error de autenticación Inicie Sesión nuevamente por favor", Toast.LENGTH_SHORT).show()
     }
 
-    }
+
 
 
 }

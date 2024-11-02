@@ -2,10 +2,55 @@ from flask import Blueprint, jsonify, request
 from app.models.user_model import UserModel,SpeedRecord
 from flasgger import swag_from
 from app.config import Config
-import datetime
+from datetime import datetime, timezone
 import jwt
 from app.auth_middleware import token_required
 user_blueprint = Blueprint('user', __name__)
+
+
+@user_blueprint.route('/token/time_left', methods=['GET'])
+@token_required
+def token_time_left():
+    # Obtener el token del encabezado Authorization
+    token = request.headers.get('Authorization')
+    
+    if token:
+        try:
+            token = token.split()[1] if "Bearer" in token else token
+            secret_key = Config.SECRET_KEY
+            decoded_token = jwt.decode(token, secret_key, algorithms=['HS256'])
+
+            # Obtener el tiempo de expiración del token (exp)
+            exp_timestamp = decoded_token.get('exp', None)
+
+            if exp_timestamp:
+                # Obtener el tiempo actual
+                current_time = datetime.now(timezone.utc)
+                # Convertir el timestamp de exp a tiempo actual
+                exp_time = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+                
+                # Calcular el tiempo restante
+                time_left = exp_time - current_time
+
+                # Verificar si el token ya expiró
+                if time_left.total_seconds() > 0:
+                    return jsonify({
+                        'message': 'Token is valid',
+                        'time_left': str(time_left)
+                    }), 200
+                else:
+                    return jsonify({'message': 'Token has already expired!'}), 403
+            else:
+                return jsonify({'message': 'Token has no expiration time!'}), 400
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired!'}), 403
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Invalid token!'}), 403
+        except TypeError as e:
+            return jsonify({'message': str(e)}), 400
+    else:
+        return jsonify({'message': 'Token is missing!'}), 403
+
 
 def verify_user(username, password):
     # Obtener todos los usuarios de UserModel

@@ -20,38 +20,28 @@ def token_time_left():
             token = token.split()[1] if "Bearer" in token else token
             secret_key = Config.SECRET_KEY
             decoded_token = jwt.decode(token, secret_key, algorithms=['HS256'])
-
-            # Obtener el tiempo de expiración del token (exp)
             exp_timestamp = decoded_token.get('exp', None)
-
             if exp_timestamp:
-                # Obtener el tiempo actual
                 current_time = datetime.datetime.now(timezone.utc)
-                # Convertir el timestamp de exp a tiempo actual
                 exp_time = datetime.datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
-                
-                # Calcular el tiempo restante
                 time_left = exp_time - current_time
-
-                # Verificar si el token ya expiró
                 if time_left.total_seconds() > 0:
+                    days_left = time_left.days
                     return jsonify({
-                        'message': 'Token is valid',
-                        'time_left': str(time_left)
+                        'time_left': str(days_left)
                     }), 200
                 else:
-                    return jsonify({'message': 'Token has already expired!'}), 403
+                    return jsonify({'time_left': '0'}), 403
             else:
-                return jsonify({'message': 'Token has no expiration time!'}), 400
+                return jsonify({'time_left': '0'}), 400
         except jwt.ExpiredSignatureError:
-            return jsonify({'message': 'Token has expired!'}), 403
+            return jsonify({'time_left': '0'}), 403
         except jwt.InvalidTokenError:
-            return jsonify({'message': 'Invalid token!'}), 403
+            return jsonify({'time_left': '0'}), 403
         except TypeError as e:
-            return jsonify({'message': str(e)}), 400
+            return jsonify({'time_left': '0', 'error': str(e)}), 400
     else:
-        return jsonify({'message': 'Token is missing!'}), 403
-
+        return jsonify({'time_left': '0'}), 403
 
 def verify_user(username, password):
     # Obtener todos los usuarios de UserModel

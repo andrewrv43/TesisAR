@@ -4,22 +4,25 @@ services:
   mongo:
     image: mongo:latest
     container_name: mongo
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=slash
+      - MONGO_INITDB_ROOT_PASSWORD=1234
     volumes:
-      - mongo_data:/data/db
-      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro  # Montar el script de inicialización.
+      - /home/ubuntu/volumes/mongo_data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     ports:
       - "27017:27017"
 
   flask_app:
     environment:
-      - MONGO_URI=mongodb://mongo:27017/
+      - MONGO_URI=mongodb://slash:1234@mongo:27017/  # Conectar usando credenciales
     image: python:3.9
     container_name: flask_app
     working_dir: /app
     volumes:
       - .:/app
       - ./requirements.txt:/app/requirements.txt
-      - flask_logs:/app/logs  # Montar volumen para logs
+      - /home/ubuntu/volumes/flask_logs:/app/logs 
     command: python run.py
     depends_on:
       - mongo
@@ -31,5 +34,4 @@ services:
 
 volumes:
   mongo_data:
-    external: true
   flask_logs:

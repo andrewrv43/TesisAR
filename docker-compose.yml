@@ -5,8 +5,8 @@ services:
     image: mongo:latest
     container_name: mongo
     environment:
-      - MONGO_INITDB_ROOT_USERNAME=slash
-      - MONGO_INITDB_ROOT_PASSWORD=1234
+      - MONGO_INITDB_ROOT_USERNAME=slashr10u20
+      - MONGO_INITDB_ROOT_PASSWORD=hopeingaming
     volumes:
       - /home/ubuntu/volumes/mongo_data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
@@ -15,7 +15,7 @@ services:
 
   flask_app:
     environment:
-      - MONGO_URI=mongodb://slash:1234@mongo:27017/  # Conectar usando credenciales
+      - MONGO_URI=mongodb://slashr10u20:hopeingaming@mongo:27017/
     image: python:3.9
     container_name: flask_app
     working_dir: /app

@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request
 from app.models.user_model import UserModel,SpeedRecord
 from flasgger import swag_from
 from app.config import Config
-from datetime import datetime, timezone
+from datetime import timezone
+import datetime
 import jwt
 from app.auth_middleware import token_required
 user_blueprint = Blueprint('user', __name__)
@@ -25,9 +26,9 @@ def token_time_left():
 
             if exp_timestamp:
                 # Obtener el tiempo actual
-                current_time = datetime.now(timezone.utc)
+                current_time = datetime.datetime.now(timezone.utc)
                 # Convertir el timestamp de exp a tiempo actual
-                exp_time = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+                exp_time = datetime.datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
                 
                 # Calcular el tiempo restante
                 time_left = exp_time - current_time

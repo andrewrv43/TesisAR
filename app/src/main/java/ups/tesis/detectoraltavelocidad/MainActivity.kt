@@ -31,8 +31,16 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
 import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
+import android.content.Context
+import android.content.SharedPreferences
+import android.widget.ProgressBar
+import android.app.Dialog
+import android.view.LayoutInflater
+import kotlinx.coroutines.delay
 
 class MainActivity : AppCompatActivity() {
+    private lateinit var progressBar: ProgressBar
+    private lateinit var blurView: View
     lateinit var btnLogin:Button
     lateinit var struser:EditText
     lateinit var strupass:EditText
@@ -44,10 +52,16 @@ class MainActivity : AppCompatActivity() {
     var usrInfo:MutableMap<String, Any> = mutableMapOf()
     lateinit var retrofitService:RetrofitService
     override fun onCreate(savedInstanceState: Bundle?) {
-        initializeRetrofitService("")
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
+        progressBar=findViewById(R.id.progressBar2)
+        blurView = findViewById(R.id.blurView)
+
+        lifecycleScope.launch {
+            checkIfTokenExists()
+        }
+
         //# region Inicializacion variables
         btnLogin = findViewById(R.id.login_btn)
         struser= findViewById(R.id.username)
@@ -106,8 +120,7 @@ class MainActivity : AppCompatActivity() {
             )
             // TODO: Eliminar el admin como iniciar sesion esta por ahora para eliminar la verificacion obligatoria
             if (makeGetTokenRequest(loginReq) || struser.text.toString()=="admin"){
-                val intent=Intent(this, MapsActivity::class.java)
-                startActivity(intent)
+                changeToMaps()
             }
         }else{
            if(confpass.text.toString()==strupass.text.toString()){
@@ -213,6 +226,9 @@ class MainActivity : AppCompatActivity() {
                 responseBody?.let {
                     usrInfo["token"] = it.token
                     println("Token obtenido exitosamente: ${it.token}")
+                    saveToPreferences(it.token, "auth_token")
+                    saveToPreferences(request.username,"username")
+                    saveToPreferences(request.password,"password")
                     initializeRetrofitService(it.token)
                     true
                 } ?: run {
@@ -254,7 +270,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun getSharedPreferences(): SharedPreferences {
+        return getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+    }
 
+    private fun saveToPreferences(value: String,name:String) {
+        val sharedPreferences = getSharedPreferences()
+        val editor = sharedPreferences.edit()
+        editor.putString(name, value)
+        editor.apply()
+    }
 
+    private fun getFromPreferences(name:String): String? {
+        val sharedPreferences = getSharedPreferences()
+        return sharedPreferences.getString(name, null)
+    }
+    private suspend fun checkIfTokenExists() {
+        progressBar.bringToFront()
+        progressBar.visibility = View.VISIBLE
+        blurView.visibility = View.VISIBLE
+        val token = getFromPreferences("auth_token")
+
+        if (token != null) {
+            initializeRetrofitService(token)
+            if(getLifeTimeToken()>2) {
+                changeToMaps()
+            }
+        } else {
+            initializeRetrofitService("")
+        }
+        delay(1000L)
+        progressBar.visibility = View.GONE
+        blurView.visibility = View.GONE
+    }
+
+    private suspend fun getLifeTimeToken(): Int {
+        val response = retrofitService.getTimeLeft()
+        return if (response.isSuccessful) {
+            val responseBody = response.body()
+            responseBody?.let {
+                it.time_left.toInt()
+            } ?: 0
+        } else {
+            0
+        }
+    }
+
+    private fun changeToMaps(){
+        val intent=Intent(this, MapsActivity::class.java)
+        startActivity(intent)
+    }
 
 }

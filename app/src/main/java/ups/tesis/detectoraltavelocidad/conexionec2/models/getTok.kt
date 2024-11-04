@@ -20,3 +20,6 @@ data class resultCreacion(
     val pwd: String,
     val user: String
 )
+data class timeLeft(
+    val time_left: String
+)

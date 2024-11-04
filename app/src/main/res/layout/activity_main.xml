@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.constraintlayout.widget.ConstraintLayout
-    android:id="@+id/main"
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/dallebackground"
     tools:context=".MainActivity">
 
-    <!-- Guidelines to divide the screen and keep UI flexible -->
+    <!-- Guidelines for responsive layout -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_vertical_start"
         android:layout_width="wrap_content"
@@ -24,7 +24,6 @@
         app:layout_constraintGuide_end="16dp"
         android:orientation="vertical" />
 
-    <!-- Use percentage values for horizontal guidelines -->
     <androidx.constraintlayout.widget.Guideline
         android:id="@+id/guideline_horizontal_top"
         android:layout_width="wrap_content"
@@ -39,7 +38,7 @@
         app:layout_constraintGuide_percent="0.9"
         android:orientation="horizontal" />
 
-    <!-- Container for all UI elements -->
+    <!-- Main content of the app (Login form) -->
     <LinearLayout
         android:id="@+id/layoutContenedor"
         android:layout_width="0dp"
@@ -54,6 +53,7 @@
         app:layout_constraintBottom_toBottomOf="@id/guideline_horizontal_bottom"
         app:layout_constraintStart_toStartOf="@id/guideline_vertical_start"
         app:layout_constraintEnd_toEndOf="@id/guideline_vertical_end">
+
         <TextView
             android:id="@+id/textoTitulo"
             android:layout_width="match_parent"
@@ -116,5 +116,31 @@
             android:layout_marginTop="16dp" />
 
     </LinearLayout>
+
+    <!-- Blur view: this is the overlay to create a blur-like effect -->
+    <View
+        android:id="@+id/blurView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+    />
+
+    <!-- ProgressBar to indicate loading -->
+    <ProgressBar
+        android:id="@+id/progressBar2"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="97dp"
+        android:layout_height="96dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:indeterminateTint="@android:color/white"
+        android:visibility="gone" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

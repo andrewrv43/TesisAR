@@ -16,6 +16,8 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.util.Log
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
 import android.widget.ImageView
 
 import androidx.appcompat.app.AppCompatActivity
@@ -98,6 +100,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             val intent = Intent(this, InfoActivity::class.java)
             startActivity(intent)
         }
+
+        glowContainer = findViewById(R.id.glowContainer)
+        val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
+        glowContainer.startAnimation(pulseAnimation)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -306,6 +312,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
 
 
+
+
     /***********************************************************************************************
      *      ACTUALIZACION DE LOCALIZACION
      **********************************************************************************************/
@@ -472,10 +480,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         if (nearestFeature != null) {
             val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
-            val maxSpeed = getMaxSpeed(nearestFeature)
+            maxSpeed = getMaxSpeed(nearestFeature).toDouble()
 
             runOnUiThread {
-                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
                 updateMapLocation(latLng, streetName)
             }
         } else {
@@ -492,41 +500,80 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             return maxSpeed
         } else {
             val highwayType = properties.optString("highway", "")
-            // Puedes definir límites de velocidad por defecto según el tipo de carretera
+            // Límites de velocidad por defecto según el tipo de carretera
             return when (highwayType) {
-                "primary" -> "90 km/h"
-                "secondary" -> "50 km/h"
-                "tertiary" -> "30 km/h"
-                "residential" -> "30 km/h"
+                "primary" -> "90"
+                "secondary" -> "50"
+                "tertiary" -> "30"
+                "residential" -> "30"
                 else -> "Desconocido"
             }
         }
     }
 
+
+
+    /*********************************************************************************************
+     * Sistema de navegacion GPS
+     ********************************************************************************************/
+
     private var lastLocation: Location? = null
+    private var speed: Double = 0.0
+    private var maxSpeed: Double = 0.0
 
     /**
      * Obtener velocidad actual por medio de GPS
      */
     private fun getSpeed(location: Location) {
         if (location.hasSpeed()) {
-            val speedKmh = location.speed * 3.6 // Convertir a km/h
-            speedText.text = "Velocidad: %.2f km/h".format(speedKmh)
+            speed = location.speed * 3.6 // Convertir a km/h
+            //speed = 19.0
         } else if (lastLocation != null) {
             val distanceInMeters = lastLocation!!.distanceTo(location)
             val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
 
             if (timeInSeconds > 0) {
                 val speedMps = distanceInMeters / timeInSeconds
-                val speedKmh = speedMps * 3.6
-
-                speedText.text = "Velocidad: %.2f km/h".format(speedKmh)
+                speed = speedMps * 3.6
             }
         } else {
-            speedText.text = ""
+            speed = 0.0
         }
+        speedText.text = "Velocidad: %.2f km/h".format(speed)
+        updateGlow(speed, maxSpeed)
         lastLocation = location
     }
+
+
+
+
+
+
+    /*********************************************************************************************
+     *   Actualizacion de marcas de colores en los bordes
+     ********************************************************************************************/
+    private lateinit var glowContainer: FrameLayout
+
+    /**
+     * Actualizar el color del borde en función de la velocidad y el límite
+     */
+    private fun updateGlow(speed: Double, limit: Double) {
+        when {
+            // Si la velocidad es mayor a +10 km/h del límite, rojo
+            speed > limit + 10 -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_red)
+            }
+            // Si la velocidad es mayor al límite pero dentro de 10 km/h, amarillo
+            speed > limit -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_yellow)
+            }
+            // Si la velocidad está dentro del límite o por debajo, verde
+            else -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_green)
+            }
+        }
+    }
+
 
 
 

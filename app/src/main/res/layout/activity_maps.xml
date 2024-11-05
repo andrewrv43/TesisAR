@@ -17,6 +17,15 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
 
+    <!-- Contenedor borde -->
+    <FrameLayout
+        android:id="@+id/glowContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        />
+    <!--android:background="@drawable/border_glow_green"-->
+
     <LinearLayout
         android:id="@+id/text_layout"
         android:layout_width="wrap_content"
@@ -78,6 +87,7 @@
             android:layout_weight="1"
             android:background="@color/black"
             android:text="Configuracion" />
+
     </LinearLayout>
 
     <ImageView

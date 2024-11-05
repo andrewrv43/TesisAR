@@ -303,7 +303,7 @@ def update_user():
 @swag_from({
     'tags': ['Velocity Records'],
     'summary': 'Crear un nuevo registro de velocidad',
-    'description': 'Agrega un nuevo registro de velocidad a la base de datos',
+    'description': 'Agrega un nuevo registro de velocidad a la base de datos con información adicional de dirección y velocidades máximas de la calle.',
     'requestBody': {
         'required': True,
         'content': {
@@ -312,33 +312,54 @@ def update_user():
                     'type': 'object',
                     'properties': {
                         'latitud': {
-                            'type': 'number',
+                            'type': 'string',
                             'description': 'Latitud donde se registra la velocidad',
-                            'example': 40.7128
+                            'example': '40.7128'
                         },
                         'longitud': {
-                            'type': 'number',
+                            'type': 'string',
                             'description': 'Longitud donde se registra la velocidad',
-                            'example': -74.0060
+                            'example': '-74.0060'
                         },
-                        'user_id': {
-                            'type': 'integer',
-                            'description': 'ID del usuario',
-                            'example': 1
-                        },
-                        'velocidad': {
-                            'type': 'number',
-                            'description': 'Velocidad registrada en km/h',
-                            'example': 65.5
+                        'direccion': {
+                            'type': 'object',
+                            'description': 'Objeto JSON que contiene la dirección relacionada con el registro',
+                            'properties': {
+                                'calle': {
+                                    'type': 'string',
+                                    'description': 'Nombre de la calle',
+                                    'example': '5th Avenue'
+                                },
+                                'ciudad': {
+                                    'type': 'string',
+                                    'description': 'Ciudad donde se registra la velocidad',
+                                    'example': 'New York'
+                                },
+                                'codigo_postal': {
+                                    'type': 'string',
+                                    'description': 'Código postal asociado',
+                                    'example': '10001'
+                                }
+                            }
                         },
                         'fecha': {
                             'type': 'string',
                             'format': 'date-time',
                             'description': 'Fecha y hora del registro',
                             'example': '2023-09-15T14:28:22.842Z'
+                        },
+                        'speed': {
+                            'type': 'string',
+                            'description': 'Velocidad registrada en km/h',
+                            'example': '65.5'
+                        },
+                        'streetMaxSpeed': {
+                            'type': 'string',
+                            'description': 'Velocidad máxima permitida en la calle en km/h',
+                            'example': '80'
                         }
                     },
-                    'required': ['latitud', 'longitud', 'user_id', 'velocidad', 'fecha']
+                    'required': ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed']
                 }
             }
         }
@@ -349,11 +370,16 @@ def update_user():
             'content': {
                 'application/json': {
                     'example': {
-                        'latitud': 40.7128,
-                        'longitud': -74.0060,
-                        'user_id': 1,
-                        'velocidad': 65.5,
-                        'fecha': '2023-09-15T14:28:22.842Z'
+                        'latitud': '40.7128',
+                        'longitud': '-74.0060',
+                        'direccion': {
+                            'calle': '5th Avenue',
+                            'ciudad': 'New York',
+                            'codigo_postal': '10001'
+                        },
+                        'fecha': '2023-09-15T14:28:22.842Z',
+                        'speed': '65.5',
+                        'streetMaxSpeed': '80'
                     }
                 }
             }
@@ -365,13 +391,27 @@ def update_user():
 })
 def create_sp_record():
     data = request.get_json()
-    required_fields = ['latitud', 'longitud', 'user_id', 'velocidad', 'fecha']
+
+    # Los campos requeridos ahora incluyen direccion, speed y streetMaxSpeed
+    required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed']
     missing_fields = [field for field in required_fields if field not in data]
+    
     if missing_fields:
         return jsonify({'error': f'Faltan los siguientes parámetros: {", ".join(missing_fields)}'}), 400
 
-    new_record = SpeedRecord.create_speed_record(data['latitud'], data['longitud'], data['user_id'], data['velocidad'], data['fecha'])
+    # Crear el registro con los nuevos campos
+    new_record = SpeedRecord.create_speed_record(
+        latitud=data['latitud'], 
+        longitud=data['longitud'], 
+        direccion=data['direccion'],
+        speed=data['speed'], 
+        street_max_speed=data['streetMaxSpeed'],
+        fecha=data['fecha']
+    )
+    
     return jsonify(new_record), 201
+
+
 @user_blueprint.route('/get_spdrecords', methods=['GET'])
 @token_required
 @swag_from({

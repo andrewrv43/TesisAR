@@ -83,14 +83,15 @@ class SpeedRecord:
             }
 
     @staticmethod
-    def create_speed_record(latitud:str,longitud:str,user_id:str,velocidad:str,fecha:str):
+    def create_speed_record(latitud:str,longitud:str,direccion ,speed:str,street_max_speed:str,fecha:str):
         """Funcion de creacion de valores en el registro de velocidad por usuario
         
         Keyword arguments:
             latitud -- string
             longitud -- string
-            user_id -- string
-            velocidad -- string
+            direccion
+            speed -- string
+            street_max_speed -- string
             fecha -- string
 
         Return: 
@@ -100,8 +101,9 @@ class SpeedRecord:
         newRecord={
             'latitud':latitud,
             'longitud':longitud,
-            'id_user':user_id,
-            'velocidad':velocidad,
+            'direccion':direccion,
+            'velocidad':speed,
+            'street_max_speed':street_max_speed,
             'fecha':fecha
         }
         record= db['sp_record'].insert_one(newRecord)

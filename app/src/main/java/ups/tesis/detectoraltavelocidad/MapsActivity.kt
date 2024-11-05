@@ -44,6 +44,9 @@ import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.pow
@@ -55,6 +58,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
+    private var latitud: Double = 0.0
+    private var longitud: Double = 0.0
+    private var direccion: JSONObject? = null
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
@@ -160,6 +166,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
+                    latitud = location.latitude
+                    longitud = location.longitude
                     val currentLatLng = LatLng(location.latitude, location.longitude)
                     getCurrentLocation(currentLatLng)
                 }
@@ -474,6 +482,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
         // Buscar el segmento de carretera más cercano
         val nearestFeature = findNearestRoadSegment(latLng)
+        direccion = nearestFeature
 
         // Guardar en archivo
         saveStreetNameToFile(latLng, nearestFeature)
@@ -579,11 +588,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
 
 
-
-
-
-
-
     /*********************************************************************************************
      *   Sensor de velocidad (ACELEROMETRO)
      ********************************************************************************************/
@@ -640,4 +644,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) { /* No es necesario implementar este método */ }
+
+
+    /**
+     * Envio de datos a endpoint
+     */
+    private fun sendData() {
+        /*
+        val jsonObject = JSONObject().apply {
+            put("latitud", latitud)
+            put("longitud", longitud)
+            put("direccion", direccion)
+            put("speed", "%.2f".format(speed))
+            put("maxSpeed", "%.2f".format(maxSpeed))
+            put("fecha", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))  // Fecha y hora actual
+        }*/
+        // TODO: Logica para enviar los datos al endpoint 
+    }
 }

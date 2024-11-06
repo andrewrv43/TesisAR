@@ -69,7 +69,13 @@ class SpeedRecord:
     @staticmethod
     def  get_all_speed_records():
         records = db['sp_record'].find()
-        return [{'id': str(spdRecord['_id']),'user_id':spdRecord['id_user'], 'latitud': spdRecord['latitud'], 'longitud': spdRecord['longitud'],'velocidad': spdRecord['velocidad'], 'fecha': spdRecord['fecha']} for spdRecord in records]
+        return [{'id': str(spdRecord['_id']),
+                 'direccion':spdRecord['direccion'],
+                 'latitud': spdRecord['latitud'],
+                 'longitud': spdRecord['longitud'],
+                 'velocidad': spdRecord['velocidad'],
+                 'fecha': spdRecord['fecha'],
+                 'street_max_speed':spdRecord['street_max_speed']} for spdRecord in records]
     
     @staticmethod
     def  get_speed_record_by_id(speed_record_id):

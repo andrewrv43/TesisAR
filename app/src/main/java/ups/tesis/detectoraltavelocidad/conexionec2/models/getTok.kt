@@ -1,5 +1,8 @@
 package ups.tesis.detectoraltavelocidad.conexionec2.models
 
+import com.google.gson.JsonObject
+import org.json.JSONObject
+
 data class getTok(
     val token: String
 )
@@ -22,4 +25,16 @@ data class resultCreacion(
 )
 data class timeLeft(
     val time_left: String
+)
+
+data class newRecordResponse(
+    val id: String
+)
+data class envRegistro(
+    val latitud: String,
+    val longitud: String,
+    val direccion: JSONObject?,
+    val fecha: String,
+    val speed: String,
+    val streetMaxSpeed: String
 )

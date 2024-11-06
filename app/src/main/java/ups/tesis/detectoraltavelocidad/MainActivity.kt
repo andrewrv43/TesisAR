@@ -37,6 +37,7 @@ import android.widget.ProgressBar
 import android.app.Dialog
 import android.view.LayoutInflater
 import kotlinx.coroutines.delay
+import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 
 class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
@@ -51,13 +52,16 @@ class MainActivity : AppCompatActivity() {
     lateinit var textoTitulo:TextView
     var usrInfo:MutableMap<String, Any> = mutableMapOf()
     lateinit var retrofitService:RetrofitService
+    lateinit var ref: Referencias
+
     override fun onCreate(savedInstanceState: Bundle?) {
+
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContentView(R.layout.activity_main)
         progressBar=findViewById(R.id.progressBar2)
         blurView = findViewById(R.id.blurView)
-
+        ref = Referencias(this)
         lifecycleScope.launch {
             checkIfTokenExists()
         }
@@ -188,9 +192,7 @@ class MainActivity : AppCompatActivity() {
         }
         artDialogBuilder.create().show()
     }
-    private fun initializeRetrofitService(token: String="") {
-        retrofitService = RetrofitServiceFactory.makeRetrofitService(token)
-    }
+
     private suspend fun makeCreateAccountRequest(request: userCreate): Response<resultCreacion>? {
         return try {
             val response = retrofitService.createAccount(request)
@@ -226,10 +228,10 @@ class MainActivity : AppCompatActivity() {
                 responseBody?.let {
                     usrInfo["token"] = it.token
                     println("Token obtenido exitosamente: ${it.token}")
-                    saveToPreferences(it.token, "auth_token")
-                    saveToPreferences(request.username,"username")
-                    saveToPreferences(request.password,"password")
-                    initializeRetrofitService(it.token)
+                    ref.saveToPreferences(it.token, "auth_token")
+                    ref.saveToPreferences(request.username,"username")
+                    ref.saveToPreferences(request.password,"password")
+                    retrofitService = ref.initializeRetrofitService(it.token)
                     true
                 } ?: run {
                     println("El cuerpo de la respuesta es nulo")
@@ -270,34 +272,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun getSharedPreferences(): SharedPreferences {
-        return getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
-    }
-
-    private fun saveToPreferences(value: String,name:String) {
-        val sharedPreferences = getSharedPreferences()
-        val editor = sharedPreferences.edit()
-        editor.putString(name, value)
-        editor.apply()
-    }
-
-    private fun getFromPreferences(name:String): String? {
-        val sharedPreferences = getSharedPreferences()
-        return sharedPreferences.getString(name, null)
-    }
     private suspend fun checkIfTokenExists() {
         progressBar.bringToFront()
         progressBar.visibility = View.VISIBLE
         blurView.visibility = View.VISIBLE
-        val token = getFromPreferences("auth_token")
 
-        if (token != null) {
-            initializeRetrofitService(token)
+        val token = ref.getFromPreferences("auth_token")
+
+        if (token != "") {
+            retrofitService = ref.initializeRetrofitService(token)
             if(getLifeTimeToken()>2) {
                 changeToMaps()
             }
         } else {
-            initializeRetrofitService("")
+            ("")
         }
         delay(1000L)
         progressBar.visibility = View.GONE

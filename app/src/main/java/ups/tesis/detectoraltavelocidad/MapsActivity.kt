@@ -670,17 +670,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             put("maxSpeed", "%.2f".format(maxSpeed))
             put("fecha", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))  // Fecha y hora actual
         }*/
-//
-//        JSONObject().apply {
-//            put("name", "John Doe")
-//            put("age", 30)
-//            put("city", "New York")
-//            val address = JSONObject().apply {
-//                put("street", "123 Main St")
-//                put("zip", "10001")
-//            }
-//            put("address", address)
-//        }
+
         val newRegister=envRegistro(
             latitud = latitud.toString(),
             longitud = longitud.toString(),
@@ -689,11 +679,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             speed = "%.2f".format(speed),
             streetMaxSpeed = "%.2f".format(maxSpeed),
         )
-        val response = retrofitService.newRecord(newRegister)
-        if (response.isSuccessful){
-            Toast.makeText(this, "Registro exitoso", Toast.LENGTH_SHORT).show()
-        }else{
-            Toast.makeText(this, "Registro Fallido", Toast.LENGTH_SHORT).show()
-        }
+        ref.saveInfoToSv(retrofitService, newRegister)
+
     }
 }

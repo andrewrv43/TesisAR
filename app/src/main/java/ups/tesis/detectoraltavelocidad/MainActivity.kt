@@ -38,6 +38,12 @@ import android.app.Dialog
 import android.view.LayoutInflater
 import kotlinx.coroutines.delay
 import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
+import java.net.ConnectException
+import java.net.SocketTimeoutException
+import java.io.IOException
+import android.util.Log
+
+
 
 class MainActivity : AppCompatActivity() {
     private lateinit var progressBar: ProgressBar
@@ -123,7 +129,13 @@ class MainActivity : AppCompatActivity() {
                 password = strupass.text.toString()
             )
             // TODO: Eliminar el admin como iniciar sesion esta por ahora para eliminar la verificacion obligatoria
-            if (makeGetTokenRequest(loginReq) || struser.text.toString()=="admin"){
+
+
+            val (updatedUsrInfo, success, updatedRetrofitService) = ref.makeGetTokenRequest(loginReq, ref.initializeRetrofitService(), usrInfo)
+            usrInfo = updatedUsrInfo
+            retrofitService = updatedRetrofitService
+            if ( success|| struser.text.toString()=="admin"){
+                Log.d("changetomaps", "change exitoso")
                 changeToMaps()
             }
         }else{
@@ -132,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                    creacion_login()
                }
            }else{
-               alertBox(titulo = "ALERTA", texto = R.string.txtContraseñaNoCoincide, btnTxt = "Continuar")
+               ref.alertBox(titulo = "ALERTA", texto = R.string.txtContraseñaNoCoincide, btnTxt = "Continuar")
            }
         }
     }
@@ -182,16 +194,7 @@ class MainActivity : AppCompatActivity() {
             crearCuentatxt.text = Html.fromHtml("<u>${getString(R.string.txtCrearCuenta)}</u>", 1)
         }
     }
-    private fun alertBox(titulo:String, texto: Int, btnTxt:String){
-        val artDialogBuilder=AlertDialog.Builder(this@MainActivity)
-        artDialogBuilder.setTitle(titulo)
-        artDialogBuilder.setMessage(texto)
-        artDialogBuilder.setCancelable(false)
-        artDialogBuilder.setPositiveButton(btnTxt){_,_->
 
-        }
-        artDialogBuilder.create().show()
-    }
 
     private suspend fun makeCreateAccountRequest(request: userCreate): Response<resultCreacion>? {
         return try {
@@ -220,57 +223,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private suspend fun makeGetTokenRequest(request: tokenRequest): Boolean {
-        return try {
-            val response: Response<getTok> = retrofitService.getTok(request)
-            if (response.isSuccessful) {
-                val responseBody = response.body()
-                responseBody?.let {
-                    usrInfo["token"] = it.token
-                    println("Token obtenido exitosamente: ${it.token}")
-                    ref.saveToPreferences(it.token, "auth_token")
-                    ref.saveToPreferences(request.username,"username")
-                    ref.saveToPreferences(request.password,"password")
-                    retrofitService = ref.initializeRetrofitService(it.token)
-                    true
-                } ?: run {
-                    println("El cuerpo de la respuesta es nulo")
-                    false
-                }
-            } else {
-                when (response.code()) {
-                    401 -> {
-                        // Manejo específico para error 401
-                        val errorResponse = response.errorBody()?.string()
-                        errorResponse?.let {
-                            val errorMessage = JSONObject(it).optString("message", "Usuario o contraseña incorrectos")
-                            println("Error de autenticación: $errorMessage")
-                            Toast.makeText(
-                                this@MainActivity,
-                                "Error: $errorMessage",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                    }
-                    else -> {
-                        // Manejo de otros códigos de error
-                        println("Error en la obtención de token: Código ${response.code()} - ${response.message()}")
-                        Toast.makeText(
-                            this@MainActivity,
-                            "Error desconocido. Código: ${response.code()}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-                }
-                false
-            }
-        } catch (e: Exception) {
-            // Manejo de excepciones
-            println("Excepción: ${e.message}")
-            Toast.makeText(this@MainActivity, "Error de autenticación. Intente nuevamente.", Toast.LENGTH_SHORT).show()
-            false
-        }
-    }
+
 
     private suspend fun checkIfTokenExists() {
         progressBar.bringToFront()
@@ -281,27 +234,15 @@ class MainActivity : AppCompatActivity() {
 
         if (token != "") {
             retrofitService = ref.initializeRetrofitService(token)
-            if(getLifeTimeToken()>2) {
-                changeToMaps()
-            }
+            ref.getLifeTimeToken(retrofitService)
+            changeToMaps()
+
         } else {
             ("")
         }
         delay(1000L)
         progressBar.visibility = View.GONE
         blurView.visibility = View.GONE
-    }
-
-    private suspend fun getLifeTimeToken(): Int {
-        val response = retrofitService.getTimeLeft()
-        return if (response.isSuccessful) {
-            val responseBody = response.body()
-            responseBody?.let {
-                it.time_left.toInt()
-            } ?: 0
-        } else {
-            0
-        }
     }
 
     private fun changeToMaps(){

@@ -16,6 +16,7 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 import java.util.concurrent.TimeUnit
 import okhttp3.logging.HttpLoggingInterceptor
+import ups.tesis.detectoraltavelocidad.conexionec2.models.timeLeft
 
 interface RetrofitService {
     @POST("login")
@@ -23,6 +24,9 @@ interface RetrofitService {
 
     @POST("user")
     suspend fun createAccount(@Body request: userCreate): Response<resultCreacion>
+
+    @GET("token/time_left")
+    suspend fun getTimeLeft(): Response<timeLeft>
 }
 
 

@@ -15,9 +15,9 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.location.Address
-import android.location.Geocoder
 import android.util.Log
+import android.view.animation.AnimationUtils
+import android.widget.FrameLayout
 import android.widget.ImageView
 
 import androidx.appcompat.app.AppCompatActivity
@@ -25,6 +25,7 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.FusedLocationProviderClient
+import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -37,16 +38,14 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InputStreamReader
+import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 import kotlin.math.atan2
 import kotlin.math.cos
@@ -59,6 +58,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
+    private var latitud: Double = 0.0
+    private var longitud: Double = 0.0
+    private var direccion: JSONObject? = null
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
@@ -104,6 +106,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             val intent = Intent(this, InfoActivity::class.java)
             startActivity(intent)
         }
+
+        glowContainer = findViewById(R.id.glowContainer)
+        val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
+        glowContainer.startAnimation(pulseAnimation)
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -152,12 +158,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Configura la solicitud de ubicación
-        /* DEPRECATED
-        locationRequest = LocationRequest.create().apply {
-            interval = 10000 // 10 segundos
-            fastestInterval = 5000
-            priority = LocationRequest.PRIORITY_HIGH_ACCURACY
-        }*/
         locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
             .setMinUpdateIntervalMillis(5000)
             .build()
@@ -166,8 +166,13 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
                 locationResult.lastLocation?.let { location ->
+                    latitud = location.latitude
+                    longitud = location.longitude
                     val currentLatLng = LatLng(location.latitude, location.longitude)
                     getCurrentLocation(currentLatLng)
+                }
+                for (location in locationResult.locations) {
+                    getSpeed(location)
                 }
             }
         }
@@ -315,6 +320,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
 
 
+
+
     /***********************************************************************************************
      *      ACTUALIZACION DE LOCALIZACION
      **********************************************************************************************/
@@ -392,7 +399,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             }
         }
     }*/
-    private fun saveStreetNameToFile(latLng: LatLng, streetName: Address) {
+    private fun saveStreetNameToFile(latLng: LatLng, streetName: JSONObject?) {
         try {
             val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, MODE_APPEND)
             val json = """
@@ -475,13 +482,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
         // Buscar el segmento de carretera más cercano
         val nearestFeature = findNearestRoadSegment(latLng)
+        direccion = nearestFeature
+
+        // Guardar en archivo
+        saveStreetNameToFile(latLng, nearestFeature)
 
         if (nearestFeature != null) {
             val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
-            val maxSpeed = getMaxSpeed(nearestFeature)
+            maxSpeed = getMaxSpeed(nearestFeature).toDouble()
 
             runOnUiThread {
-                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
                 updateMapLocation(latLng, streetName)
             }
         } else {
@@ -498,12 +509,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             return maxSpeed
         } else {
             val highwayType = properties.optString("highway", "")
-            // Puedes definir límites de velocidad por defecto según el tipo de carretera
+            // Límites de velocidad por defecto según el tipo de carretera
             return when (highwayType) {
-                "primary" -> "90 km/h"
-                "secondary" -> "50 km/h"
-                "tertiary" -> "30 km/h"
-                "residential" -> "30 km/h"
+                "primary" -> "90"
+                "secondary" -> "50"
+                "tertiary" -> "30"
+                "residential" -> "30"
                 else -> "Desconocido"
             }
         }
@@ -511,7 +522,66 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
 
 
+    /*********************************************************************************************
+     * Sistema de navegacion GPS
+     ********************************************************************************************/
 
+    private var lastLocation: Location? = null
+    private var speed: Double = 0.0
+    private var maxSpeed: Double = 0.0
+
+    /**
+     * Obtener velocidad actual por medio de GPS
+     */
+    private fun getSpeed(location: Location) {
+        if (location.hasSpeed()) {
+            speed = location.speed * 3.6 // Convertir a km/h
+            //speed = 19.0
+        } else if (lastLocation != null) {
+            val distanceInMeters = lastLocation!!.distanceTo(location)
+            val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
+
+            if (timeInSeconds > 0) {
+                val speedMps = distanceInMeters / timeInSeconds
+                speed = speedMps * 3.6
+            }
+        } else {
+            speed = 0.0
+        }
+        speedText.text = "Velocidad: %.2f km/h".format(speed)
+        updateGlow(speed, maxSpeed)
+        lastLocation = location
+    }
+
+
+
+
+
+
+    /*********************************************************************************************
+     *   Actualizacion de marcas de colores en los bordes
+     ********************************************************************************************/
+    private lateinit var glowContainer: FrameLayout
+
+    /**
+     * Actualizar el color del borde en función de la velocidad y el límite
+     */
+    private fun updateGlow(speed: Double, limit: Double) {
+        when {
+            // Si la velocidad es mayor a +10 km/h del límite, rojo
+            speed > limit + 10 -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_red)
+            }
+            // Si la velocidad es mayor al límite pero dentro de 10 km/h, amarillo
+            speed > limit -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_yellow)
+            }
+            // Si la velocidad está dentro del límite o por debajo, verde
+            else -> {
+                glowContainer.setBackgroundResource(R.drawable.border_glow_green)
+            }
+        }
+    }
 
 
 
@@ -547,7 +617,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     // Tiempo inicial
     private var lastTimestamp = 0L
     override fun onSensorChanged(event: SensorEvent) {
-        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+        /*if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
             ax = event.values[0].toDouble()
             ay = event.values[1].toDouble()
             az = event.values[2].toDouble()
@@ -570,8 +640,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             xValueText.text = "X: $ax"
             yValueText.text = "Y: $ay"
             zValueText.text = "Z: $az"
-        }
+        }*/
     }
 
     override fun onAccuracyChanged(p0: Sensor?, p1: Int) { /* No es necesario implementar este método */ }
+
+
+    /**
+     * Envio de datos a endpoint
+     */
+    private fun sendData() {
+        /*
+        val jsonObject = JSONObject().apply {
+            put("latitud", latitud)
+            put("longitud", longitud)
+            put("direccion", direccion)
+            put("speed", "%.2f".format(speed))
+            put("maxSpeed", "%.2f".format(maxSpeed))
+            put("fecha", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))  // Fecha y hora actual
+        }*/
+        // TODO: Logica para enviar los datos al endpoint 
+    }
 }

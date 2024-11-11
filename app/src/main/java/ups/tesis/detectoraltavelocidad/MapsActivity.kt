@@ -23,6 +23,7 @@ import android.widget.ImageView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationAvailability
@@ -38,8 +39,12 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
+import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
+import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
+import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import java.io.BufferedReader
 import java.io.FileOutputStream
 import java.io.IOException
@@ -52,10 +57,13 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import android.os.Handler
+import android.os.Looper
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
-
+    private val handler = Handler(Looper.getMainLooper())
+    private val interval: Long = 300_000 //5 minutos en milisegundos
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
     private var latitud: Double = 0.0
@@ -82,6 +90,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var yValueText: TextView
     private lateinit var zValueText: TextView
     private lateinit var speedText: TextView
+    val ref = Referencias(context = this)
+    lateinit var retrofitService: RetrofitService
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -110,6 +120,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         glowContainer = findViewById(R.id.glowContainer)
         val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
         glowContainer.startAnimation(pulseAnimation)
+        retrofitService=ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -131,6 +142,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
         startLocationUpdates()
+        handler.postDelayed(runnable, interval)
     }
 
     override fun onPause() {
@@ -138,6 +150,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         // Detener el sensor cuando la actividad no esté visible
         sensorManager.unregisterListener(this)
         stopLocationUpdates()
+        handler.removeCallbacks(runnable)
     }
 
     override fun onDestroy() {
@@ -170,6 +183,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                     longitud = location.longitude
                     val currentLatLng = LatLng(location.latitude, location.longitude)
                     getCurrentLocation(currentLatLng)
+                    lifecycleScope.launch {
+                        sendData()
+                    }
                 }
                 for (location in locationResult.locations) {
                     getSpeed(location)
@@ -649,7 +665,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      * Envio de datos a endpoint
      */
-    private fun sendData() {
+    private suspend fun sendData() {
         /*
         val jsonObject = JSONObject().apply {
             put("latitud", latitud)
@@ -659,6 +675,29 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             put("maxSpeed", "%.2f".format(maxSpeed))
             put("fecha", SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()))  // Fecha y hora actual
         }*/
-        // TODO: Logica para enviar los datos al endpoint 
+
+        val newRegister=envRegistro(
+            latitud = latitud.toString(),
+            longitud = longitud.toString(),
+            direccion = direccion,
+            fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()).toString(),
+            speed = "%.2f".format(speed),
+            streetMaxSpeed = "%.2f".format(maxSpeed),
+        )
+
+        ref.saveInfoToSv(retrofitService, newRegister)
+        //ref.loadLocalRegsSv()
     }
+
+    private val runnable = object : Runnable {
+        override fun run() {
+            lifecycleScope.launch {
+                ref.loadLocalRegsSv()
+            }
+            // Programar la siguiente ejecución en 10 minutos
+            handler.postDelayed(this, interval)
+        }
+    }
+
+
 }

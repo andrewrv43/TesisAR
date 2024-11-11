@@ -57,10 +57,13 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import android.os.Handler
+import android.os.Looper
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
-
+    private val handler = Handler(Looper.getMainLooper())
+    private val interval: Long = 300_000 //5 minutos en milisegundos
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
     private var latitud: Double = 0.0
@@ -139,6 +142,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
         startLocationUpdates()
+        handler.postDelayed(runnable, interval)
     }
 
     override fun onPause() {
@@ -146,6 +150,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         // Detener el sensor cuando la actividad no esté visible
         sensorManager.unregisterListener(this)
         stopLocationUpdates()
+        handler.removeCallbacks(runnable)
     }
 
     override fun onDestroy() {
@@ -679,7 +684,20 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             speed = "%.2f".format(speed),
             streetMaxSpeed = "%.2f".format(maxSpeed),
         )
-        ref.saveInfoToSv(retrofitService, newRegister)
 
+        ref.saveInfoToSv(retrofitService, newRegister)
+        //ref.loadLocalRegsSv()
     }
+
+    private val runnable = object : Runnable {
+        override fun run() {
+            lifecycleScope.launch {
+                ref.loadLocalRegsSv()
+            }
+            // Programar la siguiente ejecución en 10 minutos
+            handler.postDelayed(this, interval)
+        }
+    }
+
+
 }

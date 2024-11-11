@@ -5,6 +5,9 @@ import android.content.SharedPreferences
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.R
@@ -48,30 +51,53 @@ class Referencias(val context: Context){
         artDialogBuilder.create().show()
     }
 
-    suspend fun saveInfoToSv(retrofitService: RetrofitService, newRegister: envRegistro){
+    suspend fun saveInfoToSv(retrofitService: RetrofitService, newRegister: envRegistro,local:Boolean=false):Int{
         try {
             val response = retrofitService.newRecord(newRegister)
             if (response.isSuccessful){
                 Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
+                return 1
             }else{
                 Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
+                return 1
             }
         } catch (e: ConnectException) {
-            Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
+            if(local){
+                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
+            }else{
+                addNewLocalRegister(newRegister)
+                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
+            }
             Log.e("saveInfoToSv", "Error de conexión: ${e.message}")
-            0
+            return 0
         } catch (e: SocketTimeoutException) {
-            Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
+            if(local){
+                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
+            }else{
+                addNewLocalRegister(newRegister)
+                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
+            }
             Log.e("saveInfoToSv", "Tiempo de espera agotado: ${e.message}")
-            0
+            return 0
         } catch (e: IOException) {
-            Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
+            if(local){
+                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
+            }else{
+                addNewLocalRegister(newRegister)
+                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
+            }
             Log.e("saveInfoToSv", "Error de entrada/salida: ${e.message}")
-            0
+            return 0
         } catch (e: Exception) {
-            Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
+            if(local){
+                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
+
+            }else{
+                addNewLocalRegister(newRegister)
+                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
+            }
             Log.e("saveInfoToSv", "Error inesperado: ${e.message}")
-            0
+            return 0
         }
 
     }
@@ -81,7 +107,13 @@ class Referencias(val context: Context){
             return if (response.isSuccessful) {
                 val responseBody = response.body()
                 responseBody?.let {
-                    it.time_left.toInt()
+                    if (it.time_left.toInt() == 0){
+                        val (usrInfo,_,_ ) = makeGetTokenRequest(tokenRequest(username = getFromPreferences("username"), password = getFromPreferences("password")), retrofitService, mutableMapOf())
+                        saveToPreferences(usrInfo["token"].toString(), "auth_token")
+                        getLifeTimeToken(retrofitService)
+                    }else{
+                        it.time_left.toInt()
+                    }
                 } ?: 0
             } else {
                 0
@@ -141,6 +173,70 @@ class Referencias(val context: Context){
             Log.e("makeGetTokenRequest", "Error inesperado: ${e.message}")
             Triple(usrInfo, false, retrofitService)
         }
+    }
+
+    fun addNewLocalRegister(newRegister: envRegistro){
+        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val gson = Gson()
+
+        val jsonArrayString = sharedPreferences.getString("envRegistro", null)
+        val registrosList: MutableList<envRegistro> = if (jsonArrayString != null) {
+            val type = object : TypeToken<MutableList<envRegistro>>() {}.type
+            gson.fromJson(jsonArrayString, type)
+        } else {
+            mutableListOf()
+        }
+        registrosList.add(newRegister)
+        val newJsonArrayString = gson.toJson(registrosList)
+        editor.putString("envRegistro", newJsonArrayString)
+        editor.apply()
+    }
+    fun obtainLocalRegs():List<envRegistro>{
+        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
+        val gson = Gson()
+        val jsonArrayString = sharedPreferences.getString("envRegistro", null)
+
+        return if (jsonArrayString != null) {
+            val type = object : TypeToken<List<envRegistro>>() {}.type
+            gson.fromJson(jsonArrayString, type)
+        } else {
+            emptyList()
+        }
+    }
+    suspend fun loadLocalRegsSv(){
+        val localRegs = obtainLocalRegs().toMutableList()
+
+        if (localRegs.isNotEmpty()) {
+            val iterator = localRegs.iterator()
+            while (iterator.hasNext()) {
+                val reg = iterator.next()
+
+                val result = saveInfoToSv(
+                    retrofitService = initializeRetrofitService(getFromPreferences("auth_token")),
+                    newRegister = reg,
+                    local = true
+                )
+                if (result == 1) {
+                    Log.e("loadLocalRegsSv", "Se removio un dato guardado")
+                    iterator.remove()
+                } else{
+                    Log.e("loadLocalRegsSv", "Error inesperado: No se cargaron todos los datos locales")
+                    break
+                }
+
+            }
+            saveEnvRegistros(localRegs)
+        }
+
+    }
+    fun saveEnvRegistros( registros: List<envRegistro>) {
+        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
+        val editor = sharedPreferences.edit()
+        val gson = Gson()
+        val jsonArrayString = gson.toJson(registros)
+        editor.putString("envRegistro", jsonArrayString)
+        editor.apply()
     }
 
 }

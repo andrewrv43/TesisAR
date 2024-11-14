@@ -494,7 +494,7 @@ def obtainallrecords():
     response = SpeedRecord.get_all_speed_records()
     return jsonify(response), 200
 
-@user_blueprint.route('get_spdrecord_user',methods=['GET'])
+@user_blueprint.route('/get_spdrecord_user',methods=['GET'])
 @token_required
 @swag_from({
     'tags': ['Velocity Records'],

@@ -683,6 +683,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()).toString(),
             speed = "%.2f".format(speed),
             streetMaxSpeed = "%.2f".format(maxSpeed),
+            userid = ref.getFromPreferences("username")
         )
 
         ref.saveInfoToSv(retrofitService, newRegister)

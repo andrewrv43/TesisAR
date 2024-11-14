@@ -91,11 +91,11 @@ class SpeedRecord:
     
     @staticmethod
     def get_records_by_user(userid: str):
-        records = db['sp_record'].find({'userid': userid}).sort('_id',-1)
+        records = db['sp_record'].find({'userid': userid})
         return [
             {
                 'id': str(record['_id']),
-                'direccion': record.get('direccion', None).get('nameValuePairs', None).get('properties', None).get('nameValuePairs', None).get('name', None),
+                'direccion': record.get('direccion', {}).get('nameValuePairs', {}).get('properties', {}).get('nameValuePairs', {}).get('name', None),
                 'latitud': record.get('latitud'),
                 'longitud': record.get('longitud'),
                 'velocidad': record.get('velocidad'),
@@ -104,8 +104,6 @@ class SpeedRecord:
             }
             for record in records
         ]
-            
-        
     @staticmethod
     def create_speed_record(latitud:str,longitud:str,direccion ,speed:str,street_max_speed:str,fecha:str,userid:str):
         """Funcion de creacion de valores en el registro de velocidad por usuario

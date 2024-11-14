@@ -414,9 +414,6 @@ def update_user():
 def create_sp_record():
     data = request.get_json()
     token = request.headers.get('Authorization')
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
-    print(token)
-    print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
     _,id = decode_token(token)
     # Los campos requeridos ahora incluyen direccion, speed y streetMaxSpeed y userid
     required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed']

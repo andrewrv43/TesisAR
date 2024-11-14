@@ -87,9 +87,27 @@ class SpeedRecord:
         return {
                 'error': 'Error al procesar la solicitud de Retorno, id inexistente',
             }
-
+    
+    
     @staticmethod
-    def create_speed_record(latitud:str,longitud:str,direccion ,speed:str,street_max_speed:str,fecha:str):
+    def get_records_by_user(userid: str):
+        records = db['sp_record'].find({'userid': userid})
+        return [
+            {
+                'id': str(record['_id']),
+                'direccion': record.get('direccion', None).get('nameValuePairs', None).get('properties', None).get('nameValuePairs', None).get('name', None),
+                'latitud': record.get('latitud'),
+                'longitud': record.get('longitud'),
+                'velocidad': record.get('velocidad'),
+                'fecha': record.get('fecha'),
+                'street_max_speed': record.get('street_max_speed')
+            }
+            for record in records
+        ]
+            
+        
+    @staticmethod
+    def create_speed_record(latitud:str,longitud:str,direccion ,speed:str,street_max_speed:str,fecha:str,userid:str):
         """Funcion de creacion de valores en el registro de velocidad por usuario
         
         Keyword arguments:
@@ -110,7 +128,8 @@ class SpeedRecord:
             'direccion':direccion,
             'velocidad':speed,
             'street_max_speed':street_max_speed,
-            'fecha':fecha
+            'fecha':fecha,
+            'userid':userid
         }
         record= db['sp_record'].insert_one(newRecord)
         return SpeedRecord.get_speed_record_by_id(record.inserted_id)

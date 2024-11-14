@@ -7,8 +7,7 @@ import datetime
 import jwt
 from app.auth_middleware import token_required
 user_blueprint = Blueprint('user', __name__)
-
-
+    
 @user_blueprint.route('/token/time_left', methods=['GET'])
 @token_required
 def token_time_left():
@@ -58,6 +57,19 @@ def verify_user(username, password):
 
     # Si no se encuentra coincidencia, retornar None
     return None
+
+@token_required
+def decode_token(token:str):
+    try:
+        # Decodificar el token usando la clave secreta
+        decoded_data = jwt.decode(token, Config.SECRET_KEY, algorithms=['HS256'])
+        user = decoded_data.get('user')
+        user_id = decoded_data.get('id')
+        return  user,user_id
+    except jwt.ExpiredSignatureError:
+        return None
+    except jwt.InvalidTokenError:
+        return None
 
 @user_blueprint.route('/login', methods=['POST'])
 def login():
@@ -392,8 +404,8 @@ def update_user():
 def create_sp_record():
     data = request.get_json()
 
-    # Los campos requeridos ahora incluyen direccion, speed y streetMaxSpeed
-    required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed']
+    # Los campos requeridos ahora incluyen direccion, speed y streetMaxSpeed y userid
+    required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed','userid']
     missing_fields = [field for field in required_fields if field not in data]
     
     if missing_fields:
@@ -406,7 +418,8 @@ def create_sp_record():
         direccion=data['direccion'],
         speed=data['speed'], 
         street_max_speed=data['streetMaxSpeed'],
-        fecha=data['fecha']
+        fecha=data['fecha'],
+        userid=data['userid']
     )
     
     return jsonify(new_record), 201
@@ -479,4 +492,88 @@ def create_sp_record():
 })
 def obtainallrecords():  
     response = SpeedRecord.get_all_speed_records()
+    return jsonify(response), 200
+
+@user_blueprint.route('get_spdrecord_user',methods=['GET'])
+@token_required
+@swag_from({
+    'tags': ['Velocity Records'],
+    'summary': 'Obtener registros de velocidad por usuario',
+    'description': 'Devuelve todos los registros de velocidad asociados al usuario autenticado usando el token JWT.',
+    'parameters': [
+        {
+            'name': 'Authorization',
+            'in': 'header',
+            'required': True,
+            'description': 'Token JWT para autenticación (formato: Bearer <token>)',
+            'schema': {
+                'type': 'string',
+                'example': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...'
+            }
+        }
+    ],
+    'responses': {
+        200: {
+            'description': 'Lista de registros de velocidad del usuario',
+            'content': {
+                'application/json': {
+                    'schema': {
+                        'type': 'array',
+                        'items': {
+                            'type': 'object',
+                            'properties': {
+                                'id': {
+                                    'type': 'string',
+                                    'description': 'ID del registro de velocidad',
+                                    'example': '63bfa6f8f58a7b00246c0d1e'
+                                },
+                                'direccion': {
+                                    'type': 'object',
+                                    'description': 'Información de la dirección registrada',
+                                    'example': {'name': '5th Avenue'}
+                                },
+                                'latitud': {
+                                    'type': 'number',
+                                    'description': 'Latitud donde se registró la velocidad',
+                                    'example': 40.7128
+                                },
+                                'longitud': {
+                                    'type': 'number',
+                                    'description': 'Longitud donde se registró la velocidad',
+                                    'example': -74.0060
+                                },
+                                'velocidad': {
+                                    'type': 'number',
+                                    'description': 'Velocidad registrada en km/h',
+                                    'example': 65.5
+                                },
+                                'fecha': {
+                                    'type': 'string',
+                                    'format': 'date-time',
+                                    'description': 'Fecha y hora del registro',
+                                    'example': '2023-09-15T14:28:22.842Z'
+                                },
+                                'street_max_speed': {
+                                    'type': 'number',
+                                    'description': 'Velocidad máxima permitida en la calle',
+                                    'example': 50.0
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        401: {
+            'description': 'Token inválido o expirado'
+        },
+        403: {
+            'description': 'Acceso denegado, usuario no autorizado'
+        }
+    }
+})
+def obtain_records_by_user():
+    token = request.headers.get('Authorization')
+    _,id = decode_token(token)
+    response = SpeedRecord.get_records_by_user(id)
     return jsonify(response), 200

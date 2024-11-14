@@ -403,15 +403,17 @@ def update_user():
 })
 def create_sp_record():
     data = request.get_json()
-
+    token = request.headers.get('Authorization')
+    _,id = decode_token(token)
     # Los campos requeridos ahora incluyen direccion, speed y streetMaxSpeed y userid
-    required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed','userid']
+    required_fields = ['latitud', 'longitud', 'direccion', 'fecha', 'speed', 'streetMaxSpeed']
     missing_fields = [field for field in required_fields if field not in data]
     
     if missing_fields:
         return jsonify({'error': f'Faltan los siguientes parámetros: {", ".join(missing_fields)}'}), 400
 
     # Crear el registro con los nuevos campos
+    
     new_record = SpeedRecord.create_speed_record(
         latitud=data['latitud'], 
         longitud=data['longitud'], 
@@ -419,7 +421,7 @@ def create_sp_record():
         speed=data['speed'], 
         street_max_speed=data['streetMaxSpeed'],
         fecha=data['fecha'],
-        userid=data['userid']
+        userid=id
     )
     
     return jsonify(new_record), 201
@@ -575,5 +577,8 @@ def obtainallrecords():
 def obtain_records_by_user():
     token = request.headers.get('Authorization')
     _,id = decode_token(token)
+    limit = request.args.get('limit', default=None, type=int)
     response = SpeedRecord.get_records_by_user(id)
+    if limit is not None:
+        response = response[:limit]
     return jsonify(response), 200

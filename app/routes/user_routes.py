@@ -58,14 +58,24 @@ def verify_user(username, password):
     # Si no se encuentra coincidencia, retornar None
     return None
 
-@token_required
-def decode_token(token:str):
+
+def decode_token(token):
+    if not token:
+        return None
+
     try:
-        # Decodificar el token usando la clave secreta
+        # Eliminar el prefijo 'Bearer ' si está presente
+        if token.startswith("Bearer "):
+            token = token.split(" ")[1]
+
+        # Decodificar el token
         decoded_data = jwt.decode(token, Config.SECRET_KEY, algorithms=['HS256'])
         user = decoded_data.get('user')
         user_id = decoded_data.get('id')
-        return  user,user_id
+
+        if user and user_id:
+            return user, user_id
+        return None
     except jwt.ExpiredSignatureError:
         return None
     except jwt.InvalidTokenError:

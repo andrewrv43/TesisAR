@@ -137,4 +137,5 @@ class SpeedRecord:
         if new_records:
             db['sp_record'].insert_many(new_records)
             saved_count = len(new_records)
+            print(saved_count)
             return saved_count

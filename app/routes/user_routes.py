@@ -667,7 +667,11 @@ def save_batch_speed_records():
             }
             new_records.append(newRecord)
         guardados = 0
+        print("##############################")
+        print(guardados)
+        print("##############################")
         guardados = SpeedRecord.upload_many_data(new_records)
+        print(guardados)
         return jsonify({'message': 'Registros guardados con éxito', 'count': str(guardados)}), 201
 
     except Exception as e:

@@ -30,12 +30,16 @@ data class timeLeft(
 data class newRecordResponse(
     val id: String
 )
+
+data class localDataSent(
+    val message: String,
+    val count: String,
+)
 data class envRegistro(
     val latitud: String,
     val longitud: String,
     val direccion: JSONObject?,
     val fecha: String,
     val speed: String,
-    val streetMaxSpeed: String,
-    val userid: String
+    val streetMaxSpeed: String
 )

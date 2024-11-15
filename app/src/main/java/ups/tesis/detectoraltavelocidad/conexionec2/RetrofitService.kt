@@ -17,6 +17,7 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 import java.util.concurrent.TimeUnit
 import okhttp3.logging.HttpLoggingInterceptor
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
+import ups.tesis.detectoraltavelocidad.conexionec2.models.localDataSent
 import ups.tesis.detectoraltavelocidad.conexionec2.models.newRecordResponse
 import ups.tesis.detectoraltavelocidad.conexionec2.models.timeLeft
 
@@ -32,6 +33,9 @@ interface RetrofitService {
 
     @POST("sp_nvrecord")
     suspend fun newRecord(@Body request: envRegistro): Response<newRecordResponse>
+
+    @POST("sp_localsend")
+    suspend fun saveBatch(@Body request: List<envRegistro>): Response<localDataSent>
 }
 
 

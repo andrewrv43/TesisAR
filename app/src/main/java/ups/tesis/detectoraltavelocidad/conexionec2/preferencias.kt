@@ -204,30 +204,59 @@ class Referencias(val context: Context){
             emptyList()
         }
     }
-    suspend fun loadLocalRegsSv(){
-        val localRegs = obtainLocalRegs().toMutableList()
-
-        if (localRegs.isNotEmpty()) {
-            val iterator = localRegs.iterator()
-            while (iterator.hasNext()) {
-                val reg = iterator.next()
-
-                val result = saveInfoToSv(
-                    retrofitService = initializeRetrofitService(getFromPreferences("auth_token")),
-                    newRegister = reg,
-                    local = true
-                )
-                if (result == 1) {
-                    Log.e("loadLocalRegsSv", "Se removio un dato guardado")
-                    iterator.remove()
-                } else{
-                    Log.e("loadLocalRegsSv", "Error inesperado: No se cargaron todos los datos locales")
-                    break
+    suspend fun saveInfoBatchToSv(
+        retrofitService: RetrofitService,
+        registerList: List<envRegistro>
+    ): Int {
+        return try {
+            var total = 0
+            val response = retrofitService.saveBatch(registerList)
+            if (response.isSuccessful) {
+                val responseBody = response.body()
+                responseBody?.let {
+                    if (it.count.toInt() != 0){
+                        total = it.count.toInt()
+                        Log.e("saveInfoBatchToSv", "${responseBody} ")
+                    }else{
+                        0
+                    }
                 }
-
+                total
+            } else {
+                0
             }
-            saveEnvRegistros(localRegs)
+        }catch (e: ConnectException){
+            Log.e("saveInfoBatchToSv", "Error de conexión: ${e.message} Al cargar todos los datos locales")
+            0
+        }catch (e: SocketTimeoutException){
+            Log.e("saveInfoBatchToSv", "Tiempo de espera agotado: ${e.message} Al cargar todos los datos locales")
+        0
+        }catch (e: IOException){
+            Log.e("saveInfoBatchToSv", "Error de entrada/salida: ${e.message} Al cargar todos los datos locales")
+        0
+        }catch (e: Exception){
+            Log.e("saveInfoBatchToSv", "Error inesperado: ${e.message} Al cargar todos los datos locales")
+        0
         }
+    }
+    suspend fun loadLocalRegsSv() {
+
+            val localRegs = obtainLocalRegs().toMutableList()
+
+            if (localRegs.isNotEmpty()) {
+                val retrofitService = initializeRetrofitService(getFromPreferences("auth_token"))
+                val result = saveInfoBatchToSv(
+                    retrofitService = retrofitService,
+                    registerList = localRegs
+                )
+                if (result !=0) {
+                    Log.e("loadLocalRegsSv", "Se enviaron todos los datos locales correctamente y se eliminarán. Se enviaron un total de $result registros.")
+                    // Si la operación fue exitosa, limpiar los registros locales
+                    saveEnvRegistros(emptyList())
+                } else {
+                    Log.e("loadLocalRegsSv", "Error inesperado: No se enviaron todos los datos locales.")
+                }
+            }
 
     }
     fun saveEnvRegistros( registros: List<envRegistro>) {

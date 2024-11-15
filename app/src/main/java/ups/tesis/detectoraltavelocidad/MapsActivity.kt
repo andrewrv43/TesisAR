@@ -97,10 +97,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
 
-        //val viewPager: ViewPager2 = findViewById(R.id.viewPager)
-        //val adapter = ViewPagerAdapter(this)
-        //viewPager.adapter = adapter
-
         createMapFragment()
         registerBroadcastReceiver()
         createAcelerometerSensor()
@@ -163,6 +159,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      * Crear fragmento del mapa
      */
     private fun createMapFragment() {
+        var lastSendDataTime = 0L
         val mapFragment: SupportMapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
@@ -171,8 +168,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Configura la solicitud de ubicación
-        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 10000)
-            .setMinUpdateIntervalMillis(5000)
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 500)
+            .setMinUpdateIntervalMillis(500)
             .build()
 
         // Define el callback de ubicación
@@ -183,12 +180,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                     longitud = location.longitude
                     val currentLatLng = LatLng(location.latitude, location.longitude)
                     getCurrentLocation(currentLatLng)
-                    lifecycleScope.launch {
-                        sendData()
-                    }
-                }
-                for (location in locationResult.locations) {
                     getSpeed(location)
+                    val currentTime = System.currentTimeMillis()
+                    if (speed > maxSpeed) {
+                        if (currentTime - lastSendDataTime >= 3000) {
+                            lastSendDataTime = currentTime
+                            lifecycleScope.launch {
+                                sendData()
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -520,19 +521,16 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     // Establecer limites de velocidad por tipos de calles
     private fun getMaxSpeed(feature: JSONObject): String {
         val properties = feature.getJSONObject("properties")
-        val maxSpeed = properties.optString("maxspeed", "")
-        if (maxSpeed.isNotEmpty()) {
-            return maxSpeed
-        } else {
-            val highwayType = properties.optString("highway", "")
-            // Límites de velocidad por defecto según el tipo de carretera
-            return when (highwayType) {
-                "primary" -> "90"
-                "secondary" -> "50"
-                "tertiary" -> "30"
-                "residential" -> "30"
-                else -> "Desconocido"
-            }
+
+        val highwayType = properties.optString("highway", "")
+        // Límites de velocidad por defecto según el tipo de carretera
+        return when (highwayType) {
+            "trunk" -> "70"
+            "primary" -> "50"
+            "secondary" -> "50"
+            "tertiary" -> "30"
+            "residential" -> "30"
+            else -> "Desconocido"
         }
     }
 

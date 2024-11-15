@@ -91,7 +91,7 @@ class SpeedRecord:
     
     @staticmethod
     def get_records_by_user(userid: str):
-        records = db['sp_record'].find({'userid': userid}).sort('_id',-1)
+        records = db['sp_record'].find({'userid': userid}).sort('fecha',-1)
         return [
             {
                 'id': str(record['_id']),

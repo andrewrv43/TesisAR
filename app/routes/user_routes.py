@@ -666,8 +666,8 @@ def save_batch_speed_records():
                 'userid': userid
             }
             new_records.append(newRecord)
-
-        guardados = SpeedRecord.upload_many_data()
+        guardados = 0
+        guardados = SpeedRecord.upload_many_data(new_records)
 
         return jsonify({'message': 'Registros guardados con éxito', 'count': guardados}), 201
 

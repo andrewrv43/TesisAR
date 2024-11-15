@@ -1,0 +1,13 @@
+name: Block PRs from no-pr branches
+
+on:
+  pull_request:
+    types: [opened, reopened]
+
+jobs:
+  block:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR branch
+        if: startsWith(github.head_ref, 'ms/')
+        run: exit 1

@@ -63,7 +63,7 @@ import android.os.Looper
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
     private val handler = Handler(Looper.getMainLooper())
-    private val interval: Long = 300_000 //5 minutos en milisegundos
+    private val interval: Long = 60000//5 minutos en milisegundos
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
     private var latitud: Double = 0.0
@@ -682,8 +682,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             direccion = direccion,
             fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date()).toString(),
             speed = "%.2f".format(speed),
-            streetMaxSpeed = "%.2f".format(maxSpeed),
-            userid = ref.getFromPreferences("username")
+            streetMaxSpeed = "%.2f".format(maxSpeed)
         )
 
         ref.saveInfoToSv(retrofitService, newRegister)

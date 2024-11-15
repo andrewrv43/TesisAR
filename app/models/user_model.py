@@ -132,3 +132,9 @@ class SpeedRecord:
         record= db['sp_record'].insert_one(newRecord)
         return SpeedRecord.get_speed_record_by_id(record.inserted_id)
         
+    def upload_many_data(new_records):
+        """Funcion de carga de datos en el registro de velocidad por usuario"""
+        if new_records:
+            db['sp_record'].insert_many(new_records)
+            saved_count = len(new_records)
+            return saved_count

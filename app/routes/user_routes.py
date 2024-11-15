@@ -592,3 +592,84 @@ def obtain_records_by_user():
     if limit is not None:
         response = response[:limit]
     return jsonify(response), 200
+
+@user_blueprint.route('/sp_localsend', methods=['POST'])
+@token_required
+@swag_from({
+    'tags': ['Velocity Records'],
+    'summary': 'Guardar múltiples registros de velocidad',
+    'description': 'Recibe una lista de registros de velocidad y los guarda en la base de datos.',
+    'requestBody': {
+        'required': True,
+        'content': {
+            'application/json': {
+                'schema': {
+                    'type': 'array',
+                    'items': {
+                        'type': 'object',
+                        'properties': {
+                            'latitud': {'type': 'string', 'example': '40.7128'},
+                            'longitud': {'type': 'string', 'example': '-74.0060'},
+                            'direccion': {'type': 'object', 'description': 'Información de la dirección', 'example': {'name': '5th Avenue'}},
+                            'speed': {'type': 'string', 'example': '65.5'},
+                            'street_max_speed': {'type': 'string', 'example': '50.0'},
+                            'fecha': {'type': 'string', 'format': 'date-time', 'example': '2023-09-15T14:28:22.842Z'},
+                            'userid': {'type': 'string', 'example': '123'}
+                        },
+                        'required': ['latitud', 'longitud', 'speed', 'street_max_speed', 'fecha', 'userid']
+                    }
+                }
+            }
+        }
+    },
+    'responses': {
+        201: {
+            'description': 'Registros guardados exitosamente',
+            'content': {
+                'application/json': {
+                    'example': {'message': 'Registros guardados con éxito', 'count': 10}
+                }
+            }
+        },
+        400: {'description': 'Solicitud incorrecta, datos inválidos'},
+        401: {'description': 'Token inválido o expirado'}
+    }
+})
+def save_batch_speed_records():
+    token = request.headers.get('Authorization')
+    _, userid = decode_token(token)
+
+    try:
+        records = request.get_json()
+        if not isinstance(records, list):
+            return jsonify({'message': 'Deberias enviar una lista'}), 400
+        new_records = []
+
+        for record in records:
+            latitud = record.get('latitud')
+            longitud = record.get('longitud')
+            direccion = record.get('direccion')
+            speed = record.get('speed')
+            street_max_speed = record.get('street_max_speed')
+            fecha = record.get('fecha')
+
+            # Validar campos requeridos
+            if None in [latitud, longitud, speed, street_max_speed, fecha]:
+                continue
+            newRecord = {
+                'latitud': latitud,
+                'longitud': longitud,
+                'direccion': direccion,
+                'velocidad': speed,
+                'street_max_speed': street_max_speed,
+                'fecha': fecha,
+                'userid': userid
+            }
+            new_records.append(newRecord)
+
+        guardados = SpeedRecord.upload_many_data()
+
+        return jsonify({'message': 'Registros guardados con éxito', 'count': guardados}), 201
+
+    except Exception as e:
+        return jsonify({'message': f'Error al procesar los registros: {str(e)}'}), 500

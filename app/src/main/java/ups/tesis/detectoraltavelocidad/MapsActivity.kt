@@ -66,6 +66,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private val interval: Long = 300_000 //5 minutos en milisegundos
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
+    private lateinit var infoBtn2: ImageView
     private var latitud: Double = 0.0
     private var longitud: Double = 0.0
     private var direccion: JSONObject? = null
@@ -93,6 +94,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     val ref = Referencias(context = this)
     lateinit var retrofitService: RetrofitService
 
+    /**
+     * Funcion que se ejecuta cuando se inicia la actividad MapsActivity
+     */
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_maps)
@@ -102,16 +106,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         createAcelerometerSensor()
 
         loadGeoJson() // Carga de mapa de Quito JSON
-
-        // Obtener referencia al ImageView
-        infoBtn = findViewById(R.id.infoBtn)
-
-        // Establecer el listener de click
-        infoBtn.setOnClickListener {
-            // Crear un Intent para lanzar actividad InfoActivity
-            val intent = Intent(this, InfoActivity::class.java)
-            startActivity(intent)
-        }
 
         glowContainer = findViewById(R.id.glowContainer)
         val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
@@ -159,10 +153,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      * Crear fragmento del mapa
      */
     private fun createMapFragment() {
-        var lastSendDataTime = 0L
         val mapFragment: SupportMapFragment =
             supportFragmentManager.findFragmentById(R.id.map) as SupportMapFragment
         mapFragment.getMapAsync(this)
+
+        // Obtener referencia a los botones de la interfaz
+        infoBtn = findViewById(R.id.infoBtn)
+        infoBtn2 = findViewById(R.id.infoBtn2)
+
+        // Establecer el listener de click para lanzar InfoActivity
+        infoBtn.setOnClickListener {
+            val intent = Intent(this, InfoActivity::class.java)
+            startActivity(intent)
+        }
+        infoBtn2.setOnClickListener {
+            val intent = Intent(this, InfoActivity::class.java)
+            startActivity(intent)
+        }
 
         // Inicializa el cliente de ubicación
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
@@ -172,6 +179,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             .setMinUpdateIntervalMillis(500)
             .build()
 
+        var lastSendDataTime = 0L
         // Define el callback de ubicación
         locationCallback = object : LocationCallback() {
             override fun onLocationResult(locationResult: LocationResult) {
@@ -697,6 +705,4 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             handler.postDelayed(this, interval)
         }
     }
-
-
 }

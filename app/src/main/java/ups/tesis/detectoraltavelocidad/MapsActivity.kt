@@ -59,6 +59,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import android.os.Handler
 import android.os.Looper
+import android.widget.Button
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
@@ -66,7 +67,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private val interval: Long = 60000//5 minutos en milisegundos
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
-    private lateinit var infoBtn2: ImageView
+    private lateinit var infoBtn2: Button
     private var latitud: Double = 0.0
     private var longitud: Double = 0.0
     private var direccion: JSONObject? = null

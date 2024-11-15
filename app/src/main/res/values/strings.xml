@@ -4,8 +4,10 @@
     <string name="txtLogin">Iniciar Sesión</string>
     <string name="txtCrearCuenta">Crear Cuenta</string>
     <string name="txtContraseñaNoCoincide">Las contraseñas deben ser iguales. Por favor intente de nuevo</string>
+    <string name="txtNoInternetConnection">No tienes conexión a internet. Los datos se guardarán y serán usados más tarde cuando haya acceso a internet.</string>
     <string name="mapa">mapa de google para indicar tu ubicacion</string>
     <string name="title_activity_maps">MapsActivity</string>
+    <string name="title_activity_info">InfoActivity</string>
+    <string name="btn_info">Botón de configuracion</string>
     <string name="autores">Andrew Rueda | Ronny Rosero</string>
-
 </resources>

@@ -1,29 +1,58 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/logo_app_tesis"
-    android:id="@+id/main"
+    android:background="@drawable/dallebackground"
     tools:context=".MainActivity">
 
-    <LinearLayout
-        android:id="@+id/layoutContenedor"
+    <!-- Guidelines for responsive layout -->
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_vertical_start"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentEnd="true"
-        android:layout_alignParentBottom="true"
-        android:layout_marginStart="79dp"
-        android:layout_marginTop="221dp"
-        android:layout_marginEnd="62dp"
-        android:layout_marginBottom="254dp"
-        android:background="@drawable/rounded_background"
+        app:layout_constraintGuide_begin="16dp"
+        android:orientation="vertical" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_vertical_end"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintGuide_end="16dp"
+        android:orientation="vertical" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_horizontal_top"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintGuide_percent="0.2"
+        android:orientation="horizontal" />
+
+    <androidx.constraintlayout.widget.Guideline
+        android:id="@+id/guideline_horizontal_bottom"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        app:layout_constraintGuide_percent="0.9"
+        android:orientation="horizontal" />
+
+    <!-- Main content of the app (Login form) -->
+    <LinearLayout
+        android:id="@+id/layoutContenedor"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:paddingLeft="10dp"
-        android:paddingRight="10dp">
+        android:background="@drawable/rounded_background"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:paddingTop="16dp"
+        android:paddingBottom="16dp"
+        app:layout_constraintTop_toTopOf="@id/guideline_horizontal_top"
+        app:layout_constraintBottom_toBottomOf="@id/guideline_horizontal_bottom"
+        app:layout_constraintStart_toStartOf="@id/guideline_vertical_start"
+        app:layout_constraintEnd_toEndOf="@id/guideline_vertical_end">
 
         <TextView
             android:id="@+id/textoTitulo"
@@ -31,65 +60,51 @@
             android:layout_height="wrap_content"
             android:textAlignment="center"
             android:textColor="#FFFFFF"
-            android:textSize="34sp"
-            android:textStyle="bold|italic" />
+            android:textSize="28sp"
+            android:textStyle="bold|italic"
+            android:text="Iniciar Sesión" />
 
         <EditText
             android:id="@+id/username"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="Nombre de Usuario"
             android:inputType="text"
             android:minHeight="48dp"
             android:textColor="#FFFFFF"
-            android:textColorHint="#FFFFFF" />
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="14dp" />
+            android:textColorHint="#FFFFFF"
+            android:layout_marginTop="16dp" />
 
         <EditText
             android:id="@+id/password"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="Contraseña"
             android:inputType="textPassword"
             android:minHeight="48dp"
             android:textColor="#FFFFFF"
-            android:textColorHint="#FFFFFF" />
-
-
-        <Space
-            android:layout_width="match_parent"
-            android:layout_height="20dp" />
+            android:textColorHint="#FFFFFF"
+            android:layout_marginTop="16dp" />
 
         <EditText
             android:id="@+id/passwordconf"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:ems="10"
             android:hint="Confirmar la contraseña"
             android:inputType="textPassword"
             android:minHeight="48dp"
             android:textColor="#FFFFFF"
             android:textColorHint="#FFFFFF"
-            android:visibility="gone" />
-
-
-        <Space
-            android:id="@+id/spacepassconf"
-            android:layout_width="match_parent"
-            android:layout_height="20dp"
-            android:visibility="gone" />
+            android:visibility="gone"
+            android:layout_marginTop="16dp" />
 
         <Button
             android:id="@+id/login_btn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:backgroundTint="#02E388"
-            android:text="@string/txtLogin" />
+            android:text="@string/txtLogin"
+            android:layout_marginTop="24dp" />
 
         <TextView
             android:id="@+id/textView3"
@@ -97,8 +112,35 @@
             android:layout_height="wrap_content"
             android:textAlignment="center"
             android:textColor="#FFFFFF"
-            android:textSize="14sp" />
+            android:textSize="14sp"
+            android:layout_marginTop="16dp" />
 
     </LinearLayout>
 
-</RelativeLayout>
+    <!-- Blur view: this is the overlay to create a blur-like effect -->
+    <View
+        android:id="@+id/blurView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="#80000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+    />
+
+    <!-- ProgressBar to indicate loading -->
+    <ProgressBar
+        android:id="@+id/progressBar2"
+        style="?android:attr/progressBarStyle"
+        android:layout_width="97dp"
+        android:layout_height="96dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        android:indeterminateTint="@android:color/white"
+        android:visibility="gone" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

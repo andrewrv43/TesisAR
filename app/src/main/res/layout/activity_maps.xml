@@ -66,14 +66,14 @@
     <LinearLayout
         android:id="@+id/buttons_layout"
         android:layout_width="0dp"
-        android:layout_height="70dp"
+        android:layout_height="45dp"
         android:orientation="horizontal"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent">
 
         <Button
-            android:id="@+id/button1"
+            android:id="@+id/perfilBtn2"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_weight="1"
@@ -91,10 +91,22 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/perfilBtn"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="10dp"
+        android:clickable="true"
+        android:focusable="true"
+        android:contentDescription="@string/btn_info"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:srcCompat="@drawable/left_arrow" />
+    <ImageView
         android:id="@+id/infoBtn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_marginEnd="16dp"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginEnd="10dp"
         android:clickable="true"
         android:focusable="true"
         android:contentDescription="@string/btn_info"

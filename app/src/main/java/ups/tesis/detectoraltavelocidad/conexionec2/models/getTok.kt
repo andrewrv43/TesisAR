@@ -36,5 +36,6 @@ data class envRegistro(
     val direccion: JSONObject?,
     val fecha: String,
     val speed: String,
-    val streetMaxSpeed: String
+    val streetMaxSpeed: String,
+    val userid: String
 )

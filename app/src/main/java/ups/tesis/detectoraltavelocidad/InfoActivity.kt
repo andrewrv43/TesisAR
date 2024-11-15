@@ -8,6 +8,7 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.material.button.MaterialButtonToggleGroup
+import ups.tesis.detectoraltavelocidad.conexionec2.models.MapConfig
 
 class InfoActivity : AppCompatActivity() {
 
@@ -154,10 +155,3 @@ class InfoActivity : AppCompatActivity() {
         )
     }
 }
-
-data class MapConfig(
-    val roadSelection: Int,
-    val landmarkSelection: Int,
-    val labelSelection: Int,
-    val darkSwitch: Boolean
-)

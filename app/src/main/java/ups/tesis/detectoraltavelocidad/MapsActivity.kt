@@ -352,7 +352,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      *      ACTUALIZACION DE LOCALIZACION
      **********************************************************************************************/
 
-    private val FILE_NAME = "geocoder_cache.txt"
     private var lastMarker: Marker? = null
 
     /**
@@ -390,56 +389,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             //map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
         }
     }
-    /*
-    private fun getCurrentLocation(latLng: LatLng) {
-        CoroutineScope(Dispatchers.IO).launch {
-            val geocoder = Geocoder(this@MapsActivity, Locale.getDefault())
-            try {
-                val addresses: List<Address>? = geocoder.getFromLocation(
-                    latLng.latitude,
-                    latLng.longitude,
-                    2
-                )
 
-                if (!addresses.isNullOrEmpty()) {
-                    val address: Address = addresses[0]
-                    val streetName = address.thoroughfare ?: "Calle desconocida"
-
-                    // Guardar en archivo
-                    saveStreetNameToFile(latLng, address)
-
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MapsActivity, "Estás en: $streetName", Toast.LENGTH_SHORT).show()
-                        updateMapLocation(latLng, streetName)
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@MapsActivity, "No se encontró la calle.", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: IOException) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MapsActivity, "Error al usar Geocoder: ${e.message}", Toast.LENGTH_LONG).show()
-                }
-            }
-        }
-    }*/
-    private fun saveStreetNameToFile(latLng: LatLng, streetName: JSONObject?) {
-        try {
-            val fileOutputStream: FileOutputStream = openFileOutput(FILE_NAME, MODE_APPEND)
-            val json = """
-            {
-                "latitude": ${latLng.latitude},
-                "longitude": ${latLng.longitude},
-                "streetName": "$streetName"
-            }
-        """.trimIndent()
-            fileOutputStream.write("$json\n".toByteArray())
-            fileOutputStream.close()
-        } catch (e: IOException) {
-            e.printStackTrace()
-        }
+    private fun logPrintSpeed(speed: Double, maxSpeed: Double) {
+        Log.e("logPrintSpeed", "Velocidad actual: $speed km/h - Velocidad maxima: $maxSpeed km/h")
     }
     /**
      * ---------------------------------------------------------------------------------------------------------------------------------------------
@@ -510,15 +462,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         val nearestFeature = findNearestRoadSegment(latLng)
         direccion = nearestFeature
 
-        // Guardar en archivo
-        saveStreetNameToFile(latLng, nearestFeature)
-
         if (nearestFeature != null) {
             val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
             maxSpeed = getMaxSpeed(nearestFeature).toDouble()
 
             runOnUiThread {
-                Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
+                //Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
                 updateMapLocation(latLng, streetName)
             }
         } else {
@@ -559,7 +508,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private fun getSpeed(location: Location) {
         if (location.hasSpeed()) {
             speed = location.speed * 3.6 // Convertir a km/h
-            //speed = 19.0
+            //speed = 110.0
         } else if (lastLocation != null) {
             val distanceInMeters = lastLocation!!.distanceTo(location)
             val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
@@ -691,6 +640,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             speed = "%.2f".format(speed),
             streetMaxSpeed = "%.2f".format(maxSpeed)
         )
+
+        // Imprimir Log
+        logPrintSpeed(speed, maxSpeed)
 
         ref.saveInfoToSv(retrofitService, newRegister)
         //ref.loadLocalRegsSv()

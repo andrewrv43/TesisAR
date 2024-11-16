@@ -9,5 +9,5 @@ class Config:
     email=EmailSender(os.getenv('pwdmail'))
     @staticmethod
     def init_app(app):
+        Config.email.sendEmail("Service up","Se levantó el servicio con Exito")
         pass
-Config.email.sendEmail("Service up","Se levantó el servicio con Exito")

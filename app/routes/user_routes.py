@@ -258,7 +258,7 @@ def create_new_user():
     # Verificar si el usuario ya existe
     if not UserModel.get_user_by_username(data['user']):
         new_user = UserModel.create_user(data['user'], data['pwd'])
-        Config.email.sendEmail("Usuario Creado",f"Nuevo usuario ha sido creado, bienvenido{data['user']}, solicitud proviene de: {request.remote_addr}")
+        Config.email.sendEmail("Usuario Creado",f"Nuevo usuario ha sido creado, bienvenido: {data['user']}, solicitud proviene de: {request.remote_addr}")
         return jsonify(new_user), 201
     else:
         Config.email.sendEmail("Error al crear Usuario",f"Intengo de Crear un usuario Cuidado!, solicitud proviene de: {request.remote_addr}, usuario ya existe")

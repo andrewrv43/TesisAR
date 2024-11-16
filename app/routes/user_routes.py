@@ -6,7 +6,12 @@ from datetime import timezone
 import datetime
 import jwt
 from app.auth_middleware import token_required
+import threading
 user_blueprint = Blueprint('user', __name__)
+
+def send_email_async(subject, body):
+    """Función para enviar correo de forma asíncrona."""
+    Config.email.sendEmail(subject, body)
     
 @user_blueprint.route('/token/time_left', methods=['GET'])
 @token_required
@@ -249,19 +254,26 @@ def get_username(username):
 })
 def create_new_user():  
     data = request.get_json()
-
+    client_ip = request.remote_addr
     # Verificar que los parámetros obligatorios estén presentes
     if 'user' not in data or 'pwd' not in data:
-        Config.email.sendEmail("Error al crear Usuario",f"Intengo de Crear un usuario Cuidado!, solicitud proviene de: {request.remote_addr}, falta de parametros")
+        
+        subject = "Error al crear Usuario"
+        body = f"Intento de crear un usuario fallido. Solicitud proviene de: {client_ip}. Faltan parámetros."
+        threading.Thread(target=send_email_async, args=(subject, body)).start()
         return jsonify({'error': 'Faltan parámetros obligatorios: user y pwd'}), 400
 
     # Verificar si el usuario ya existe
     if not UserModel.get_user_by_username(data['user']):
         new_user = UserModel.create_user(data['user'], data['pwd'])
-        Config.email.sendEmail("Usuario Creado",f"Nuevo usuario ha sido creado, bienvenido: {data['user']}, solicitud proviene de: {request.remote_addr}")
+        subject = "Usuario Creado"
+        body = f"Nuevo usuario creado: {data['user']}. Solicitud proviene de: {client_ip}."
+        threading.Thread(target=send_email_async, args=(subject, body)).start()
         return jsonify(new_user), 201
     else:
-        Config.email.sendEmail("Error al crear Usuario",f"Intengo de Crear un usuario Cuidado!, solicitud proviene de: {request.remote_addr}, usuario ya existe")
+        subject = "Error al crear Usuario"
+        body = f"Intento de crear un usuario ya existente. Solicitud proviene de: {client_ip}."
+        threading.Thread(target=send_email_async, args=(subject, body)).start()
         return jsonify({'error': 'Este nombre de usuario ya existe'}), 409   
 # Ruta para actualizar un usuario por ID
 @user_blueprint.route('/useract', methods=['POST'])

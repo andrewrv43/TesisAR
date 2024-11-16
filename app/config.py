@@ -7,7 +7,7 @@ class Config:
     MONGO_URI = os.getenv('MONGO_URI')
     SECRET_KEY = os.getenv('pwdLocal')
     email=EmailSender(os.getenv('pwdmail'))
-    email.sendEmail("Service up","Se levantó el servicio con Exito")
     @staticmethod
     def init_app(app):
         pass
+Config.email.sendEmail("Service up","Se levantó el servicio con Exito")

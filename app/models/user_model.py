@@ -102,8 +102,6 @@ class SpeedRecord:
                                 record['direccion']['nameValuePairs']['properties'].get('nameValuePairs') and
                                 record['direccion']['nameValuePairs']['properties']['nameValuePairs'].get('name', None)
                             ),
-                'latitud': record.get('latitud'),
-                'longitud': record.get('longitud'),
                 'velocidad': record.get('velocidad'),
                 'fecha': record.get('fecha'),
                 'street_max_speed': record.get('street_max_speed')

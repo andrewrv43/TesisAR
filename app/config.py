@@ -1,7 +1,7 @@
 import os
 import logging
 from logging.handlers import RotatingFileHandler
-from mail import EmailSender
+from .mail import EmailSender
 
 class Config:
     MONGO_URI = os.getenv('MONGO_URI')

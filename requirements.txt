@@ -3,3 +3,4 @@ pymongo
 flasgger
 python-dotenv
 PyJWT
+mail

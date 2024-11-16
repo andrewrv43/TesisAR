@@ -3,4 +3,3 @@ pymongo
 flasgger
 python-dotenv
 PyJWT
-gunicorn    

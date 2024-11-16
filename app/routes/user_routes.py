@@ -252,13 +252,16 @@ def create_new_user():
 
     # Verificar que los parámetros obligatorios estén presentes
     if 'user' not in data or 'pwd' not in data:
+        Config.email.sendEmail("Error al crear Usuario",f"Intengo de Crear un usuario Cuidado!, solicitud proviene de: {request.remote_addr}, falta de parametros")
         return jsonify({'error': 'Faltan parámetros obligatorios: user y pwd'}), 400
 
     # Verificar si el usuario ya existe
     if not UserModel.get_user_by_username(data['user']):
         new_user = UserModel.create_user(data['user'], data['pwd'])
+        Config.email.sendEmail("Usuario Creado",f"Nuevo usuario ha sido creado, bienvenido{data['user']}, solicitud proviene de: {request.remote_addr}")
         return jsonify(new_user), 201
     else:
+        Config.email.sendEmail("Error al crear Usuario",f"Intengo de Crear un usuario Cuidado!, solicitud proviene de: {request.remote_addr}, usuario ya existe")
         return jsonify({'error': 'Este nombre de usuario ya existe'}), 409   
 # Ruta para actualizar un usuario por ID
 @user_blueprint.route('/useract', methods=['POST'])

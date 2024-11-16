@@ -95,7 +95,13 @@ class SpeedRecord:
         return [
             {
                 'id': str(record['_id']),
-                'direccion': record.get('direccion', {}).get('nameValuePairs', {}).get('properties', {}).get('nameValuePairs', {}).get('name', None),
+                'direccion': (
+                                record.get('direccion') and
+                                record['direccion'].get('nameValuePairs') and
+                                record['direccion']['nameValuePairs'].get('properties') and
+                                record['direccion']['nameValuePairs']['properties'].get('nameValuePairs') and
+                                record['direccion']['nameValuePairs']['properties']['nameValuePairs'].get('name', None)
+                            ),
                 'latitud': record.get('latitud'),
                 'longitud': record.get('longitud'),
                 'velocidad': record.get('velocidad'),

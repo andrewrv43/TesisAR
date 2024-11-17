@@ -36,6 +36,7 @@ class InfoActivity : AppCompatActivity() {
     /**
      * Configurar y actualizar los listeners para los grupos de botones
      */
+
     private fun setupToggleGroupListeners() {
         // Obtener los valores de selección guardados
         val savedConfig = loadConfig(this)

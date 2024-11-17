@@ -16,9 +16,11 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 import java.util.concurrent.TimeUnit
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.http.Query
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import ups.tesis.detectoraltavelocidad.conexionec2.models.localDataSent
 import ups.tesis.detectoraltavelocidad.conexionec2.models.newRecordResponse
+import ups.tesis.detectoraltavelocidad.conexionec2.models.showRegs
 import ups.tesis.detectoraltavelocidad.conexionec2.models.timeLeft
 
 interface RetrofitService {
@@ -36,6 +38,9 @@ interface RetrofitService {
 
     @POST("sp_localsend")
     suspend fun saveBatch(@Body request: List<envRegistro>): Response<localDataSent>
+
+    @GET("get_spdrecord_user")
+    suspend fun getSpdRecordUser(@Query("limit") limit: Int): Response<List<showRegs>>
 }
 
 

@@ -60,6 +60,7 @@ class MainActivity : AppCompatActivity() {
     lateinit var retrofitService:RetrofitService
     lateinit var ref: Referencias
 
+
     override fun onCreate(savedInstanceState: Bundle?) {
 
         super.onCreate(savedInstanceState)
@@ -197,6 +198,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private suspend fun makeCreateAccountRequest(request: userCreate): Response<resultCreacion>? {
+        retrofitService = ref.initializeRetrofitService()
         return try {
             val response = retrofitService.createAccount(request)
 
@@ -245,9 +247,12 @@ class MainActivity : AppCompatActivity() {
         blurView.visibility = View.GONE
     }
 
-    private fun changeToMaps(){
-        val intent=Intent(this, MapsActivity::class.java)
+    private fun changeToMaps() {
+        val intent = Intent(this, MapsActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
+        finish()
     }
+
 
 }

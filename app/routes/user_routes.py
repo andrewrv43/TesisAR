@@ -664,12 +664,12 @@ def save_batch_speed_records():
             latitud = record.get('latitud')
             longitud = record.get('longitud')
             direccion = record.get('direccion')
-            speed = record.get('speed')
-            street_max_speed = record.get('streetMaxSpeed')
+            speed = record.get('speed').replace(',','.')
+            street_max_speed = record.get('streetMaxSpeed').replace(',','.')
             fecha = record.get('fecha')
 
             # Validar campos requeridos
-            if None in [latitud, longitud, speed, street_max_speed, fecha]:
+            if None in [latitud, longitud, speed, street_max_speed, fecha, direccion]:
                 continue
             newRecord = {
                 'latitud': latitud,

@@ -443,8 +443,8 @@ def create_sp_record():
         latitud=data['latitud'], 
         longitud=data['longitud'], 
         direccion=data['direccion'],
-        speed=data['speed'], 
-        street_max_speed=data['streetMaxSpeed'],
+        speed=data['speed'].replace(',','.'), 
+        street_max_speed=data['streetMaxSpeed'].replace(',','.'),
         fecha=data['fecha'],
         userid=id
     )

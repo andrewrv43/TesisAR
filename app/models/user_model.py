@@ -95,7 +95,7 @@ class SpeedRecord:
         return [
             {
                 'id': str(record['_id']),
-                'direccion': "record['direccion']" if isinstance(record['direccion'],str) else(
+                'direccion': record['direccion'] if isinstance(record['direccion'],str) else(
                                 record.get('direccion') and
                                 record['direccion'].get('nameValuePairs') and
                                 record['direccion']['nameValuePairs'].get('properties') and

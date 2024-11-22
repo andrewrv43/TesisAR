@@ -2,6 +2,7 @@
 <androidx.constraintlayout.widget.ConstraintLayout
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
@@ -32,19 +33,26 @@
             android:text="User: Username"
             android:layout_marginTop="8dp"
             android:textAppearance="?attr/textAppearanceBody1" />
+        <com.google.android.material.textview.MaterialTextView
+            android:id="@+id/user_quanrity"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Cantidad de Datos aportados: ...."
+            android:layout_marginTop="8dp"
+            android:textAppearance="?attr/textAppearanceBody1" />
     </LinearLayout>
 
     <!-- Icono de cerrar sesión -->
     <com.google.android.material.button.MaterialButton
         android:id="@+id/btn_logout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="47dp"
+        android:layout_height="42dp"
         android:backgroundTint="@android:color/transparent"
-        app:icon="@drawable/ic_logout"
-        app:iconTint="@color/black"
         android:contentDescription="Cerrar sesión"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
+        android:padding="16dp"
+        app:icon="@drawable/ic_baseline_logout_24"
+        app:iconTint="@color/black"
         app:layout_constraintBottom_toBottomOf="parent"
-        android:padding="16dp" />
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 </androidx.constraintlayout.widget.ConstraintLayout>

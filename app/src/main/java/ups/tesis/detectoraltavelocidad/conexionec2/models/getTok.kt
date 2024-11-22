@@ -51,3 +51,7 @@ data class showRegs(
     val id: String
 
 )
+data class obtRegsId(
+    val records: List<showRegs>,
+    val total_length: String
+)

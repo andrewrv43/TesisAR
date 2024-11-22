@@ -2,13 +2,17 @@ package ups.tesis.detectoraltavelocidad
 
 import LocalDataAdapter
 import RegistroAdapter
+import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
+import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -27,8 +31,10 @@ class ProfileActivity:AppCompatActivity() {
     private val registros = mutableListOf<showRegs>()
     private val registrosLocal = mutableListOf<showRegs>()
     private lateinit var username: MaterialTextView
-    private lateinit var id: MaterialTextView
+    private lateinit var quantity: MaterialTextView
     private lateinit var retrofitService: RetrofitService
+    private lateinit var logout: MaterialButton
+    @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
@@ -37,52 +43,97 @@ class ProfileActivity:AppCompatActivity() {
         recyclerView.layoutManager = LinearLayoutManager(this)
         registroAdapter = RegistroAdapter(registros)
         recyclerView.adapter = registroAdapter
-
+        logout = findViewById(R.id.btn_logout)
         localView = findViewById(R.id.localData)
         localView.layoutManager = LinearLayoutManager(this)
         registroAdapterLocal = LocalDataAdapter(registrosLocal)
         localView.adapter = registroAdapterLocal
-
+        quantity = findViewById(R.id.user_quanrity)
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         username = findViewById(R.id.user_name)
-        username.text = "Nombre de Usuario: ${ref.getFromPreferences("username")}"
+        username.text = "Nombre de Usuario: \n${ref.getFromPreferences("username")}"
         setSupportActionBar(toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
         retrofitService = ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
 
-        if (ref.hayConexionAInternet(this)){
-            try {
-                lifecycleScope.launch {
-                    cargarRegistrosOnline()
-                }
-            }catch (ex:Exception){
-                Log.e("On Create","Error al cargar los registros ${ex.message}")
+        cargarDatos()
+        logout.setOnClickListener {
+            for (values in arrayOf("auth_token", "username", "password")) {
+                ref.removeFromPreferences(values)
             }
-        }
-        else{
-            cargarRegistrosLocal()
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(intent)
+            finish()
         }
 
 
 
 
     }
+
+    private fun cargarDatos() {
+        if (ref.hayConexionAInternet(this)) {
+            try {
+                mostrarVistaOnline()
+                lifecycleScope.launch {
+                    cargarRegistrosOnline()
+                }
+            } catch (ex: Exception) {
+                Log.e("On Create", "Error al cargar los registros online: ${ex.message}")
+                mostrarVistaLocal()
+                cargarRegistrosLocal()
+            }
+        } else {
+            mostrarVistaLocal()
+            cargarRegistrosLocal()
+        }
+    }
+
+    private fun mostrarVistaOnline() {
+        recyclerView.isEnabled = true
+        recyclerView.visibility = View.VISIBLE
+        localView.isEnabled = false
+        localView.visibility = View.GONE
+        quantity.isEnabled = true
+        quantity.visibility = View.VISIBLE
+    }
+
+    private fun mostrarVistaLocal() {
+        localView.isEnabled = true
+        localView.visibility = View.VISIBLE
+        recyclerView.isEnabled = false
+        recyclerView.visibility = View.GONE
+        quantity.isEnabled = false
+        quantity.visibility = View.GONE
+    }
+
     override fun onSupportNavigateUp(): Boolean {
         finish() // Cierra la actividad y regresa a MapsActivity
         return true
     }
+    @SuppressLint("NotifyDataSetChanged", "SetTextI18n")
     private suspend fun cargarRegistrosOnline() {
         val listregistros = ref.get_speed_data_per_user(retrofitService,20)
         if (listregistros != null){
-            for (registro in listregistros){
+            for (registro in listregistros.records){
                 registros.add(registro)
             }
+            var msg=""
+            if (listregistros.total_length.toInt()<30){
+                msg="Muchas gracias por tu ayuda"
+            }else{
+                msg = "\nAgradecemos tu aportación!!"
+            }
+            quantity.text = "Cantidad de Datos aportados: ${listregistros.total_length} ${msg}"
             registroAdapter.notifyDataSetChanged()
         }else{
             Log.e("On Create","Error al cargar los registros")
         }
     }
+    @SuppressLint("NotifyDataSetChanged")
     private fun cargarRegistrosLocal() {
         val listregistros = ref.obtainLocalRegs()
         if (listregistros.isNotEmpty()) {
@@ -122,7 +173,6 @@ class ProfileActivity:AppCompatActivity() {
                     }
                 } catch (e: Exception) {
                     Log.e("cargarRegistrosLocal","${e.message}")
-                    dir = "Error al obtener nombre"
                 }
 
                 registrosLocal.add(

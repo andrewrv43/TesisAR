@@ -16,6 +16,7 @@ import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.R
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
+import ups.tesis.detectoraltavelocidad.conexionec2.models.obtRegsId
 import ups.tesis.detectoraltavelocidad.conexionec2.models.showRegs
 import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import java.io.IOException
@@ -23,23 +24,42 @@ import java.net.ConnectException
 import java.net.SocketTimeoutException
 
 class Referencias(val context: Context){
+    /**
+     * Obtiene las preferencias compartidas.
+     */
     fun getSharedPreferences(): SharedPreferences {
-        return  context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
+        return context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
     }
-    fun getFromPreferences(name:String): String {
+
+    /**
+     * Obtiene un valor de las preferencias compartidas por nombre.
+     */
+    fun getFromPreferences(name: String): String {
         val sharedPreferences = getSharedPreferences()
         val res = sharedPreferences.getString(name, null)
-        if(res!=null) {
-            return res
-        }
-        return ""
+        return res ?: ""
     }
-    fun saveToPreferences(value: String,name:String) {
+
+    /**
+     * Guarda un valor en las preferencias compartidas con el nombre especificado.
+     */
+    fun saveToPreferences(value: String, name: String) {
         val sharedPreferences = getSharedPreferences()
         val editor = sharedPreferences.edit()
         editor.putString(name, value)
         editor.apply()
     }
+
+    /**
+     * Elimina una preferencia específica según su nombre.
+     */
+    fun removeFromPreferences(name: String) {
+        val sharedPreferences = getSharedPreferences()
+        val editor = sharedPreferences.edit()
+        editor.remove(name)
+        editor.apply()
+    }
+
     fun initializeRetrofitService(token: String=""):RetrofitService {
         return RetrofitServiceFactory.makeRetrofitService(token)
     }
@@ -274,16 +294,19 @@ class Referencias(val context: Context){
     suspend fun get_speed_data_per_user(
         retrofitService: RetrofitService,
         limit: Int
-    ): List<showRegs>? {
+    ): obtRegsId? {
         return try {
             val response = retrofitService.getSpdRecordUser(limit)
             if (response.isSuccessful) {
-                val records = response.body()
-                records?.let {
-                    Log.e("get_speed_data_per_user", "Registros obtenidos: ${it.size}")
-                    // Procesa los registros si es necesario
+                val responseBody = response.body()
+                responseBody?.let {
+                    Log.e("get_speed_data_per_user", "Registros obtenidos: ${it.records.size}, Total: ${it.total_length}")
+
+                    obtRegsId(
+                        records = it.records,
+                        total_length = it.total_length
+                    )
                 }
-                records
             } else {
                 Log.e("get_speed_data_per_user", "Error en la respuesta: ${response.errorBody()?.string()}")
                 null

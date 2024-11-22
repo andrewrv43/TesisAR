@@ -604,9 +604,12 @@ def obtain_records_by_user():
     _,id = decode_token(token)
     limit = request.args.get('limit', default=None, type=int)
     response = SpeedRecord.get_records_by_user(id)
+    totl = str(len(response))
     if limit is not None:
         response = response[:limit]
-    return jsonify(response), 200
+    return jsonify({
+        "records":response,
+        "total_length":totl}), 200
 
 @user_blueprint.route('/sp_localsend', methods=['POST'])
 @token_required

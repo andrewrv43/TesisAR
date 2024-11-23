@@ -1,10 +1,13 @@
 package ups.tesis.detectoraltavelocidad
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.BroadcastReceiver
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.location.Location
@@ -15,6 +18,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
+import android.os.Build
 import android.util.Log
 import android.view.animation.AnimationUtils
 import android.widget.FrameLayout
@@ -26,7 +31,6 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.FusedLocationProviderClient
-import com.google.android.gms.location.LocationAvailability
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationResult
@@ -46,8 +50,6 @@ import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import java.io.BufferedReader
-import java.io.FileOutputStream
-import java.io.IOException
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,13 +60,18 @@ import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
+import android.provider.Settings
 import android.widget.Button
+import androidx.lifecycle.Observer
+import com.google.android.gms.maps.CameraUpdateFactory
+import ups.tesis.detectoraltavelocidad.services.SpeedService
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener
     /*,LocationListener*/ {
     private val handler = Handler(Looper.getMainLooper())
-    private val interval: Long = 60000//5 minutos en milisegundos
+    private val interval: Long = 60000
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
     private lateinit var infoBtn2: Button
@@ -76,7 +83,23 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
 
-    companion object { const val REQUEST_CODE_LOCATION = 1000 }
+    /* Variables para sensor de velocidad */
+    private lateinit var sensorManager: SensorManager
+    private var accelerometer: Sensor? = null
+    private lateinit var xValueText: TextView
+    private lateinit var yValueText: TextView
+    private lateinit var zValueText: TextView
+    private lateinit var speedText: TextView
+
+    private var lastLocation: Location? = null
+    private var speed: Double = 0.0
+    private var maxSpeed: Double = 0.0
+
+    val ref = Referencias(context = this)
+    private lateinit var retrofitService: RetrofitService
+
+    companion object { const val REQUEST_FOREGROUND_LOCATION_PERMISSION = 1000
+                        const val REQUEST_BACKGROUND_LOCATION_PERMISSION = 2000}
 
     private var mapStyleReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -85,15 +108,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
     }
 
-    /* Variables para sensor de velocidad */
-    private lateinit var sensorManager: SensorManager
-    private var accelerometer: Sensor? = null
-    private lateinit var xValueText: TextView
-    private lateinit var yValueText: TextView
-    private lateinit var zValueText: TextView
-    private lateinit var speedText: TextView
-    val ref = Referencias(context = this)
-    lateinit var retrofitService: RetrofitService
+    private var speedService: SpeedService? = null
+    private var isBound = false
+    private val serviceConnection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+            val binder = service as SpeedService.LocalBinder
+            speedService = binder.getService()
+            isBound = true
+            speedService?.let { service ->
+                service.speedLiveData.observe(this@MapsActivity, Observer { speed ->
+                    // Actualiza la UI con la velocidad
+                    speedText.text = "Velocidad: %.2f km/h".format(speed)
+                    Log.d("SpeedService", "MapsActivity Recibe data $speed serviceConnection")
+                })
+            }
+        }
+
+        override fun onServiceDisconnected(name: ComponentName) {
+            isBound = false
+            speedService = null
+        }
+    }
+    override fun onStart() {
+        super.onStart()
+        Intent(this, SpeedService::class.java).also { intent ->
+            bindService(intent, serviceConnection, Context.BIND_AUTO_CREATE)
+        }
+    }
+    override fun onStop() {
+        super.onStop()
+        if (isBound) {
+            unbindService(serviceConnection)
+            isBound = false
+        }
+    }
+
 
     /**
      * Funcion que se ejecuta cuando se inicia la actividad MapsActivity
@@ -106,7 +155,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         registerBroadcastReceiver()
         createAcelerometerSensor()
 
-        loadGeoJson() // Carga de mapa de Quito JSON
+        //loadGeoJson() // Carga de mapa de Quito JSON
 
         glowContainer = findViewById(R.id.glowContainer)
         val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
@@ -119,11 +168,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         map.setOnMyLocationClickListener(this)
         /*map.setOnMapClickListener(this)*/
+        checkAndRequestLocationPermissions()
+        startSpeedService()
 
         // Aplicar el estilo del mapa
         applyMapStyle()
-
-        enableLocation()
     }
 
     override fun onResume() {
@@ -132,7 +181,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         accelerometer?.also { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
         }
-        startLocationUpdates()
+        //startLocationUpdates()
         handler.postDelayed(runnable, interval)
     }
 
@@ -140,7 +189,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onPause()
         // Detener el sensor cuando la actividad no esté visible
         sensorManager.unregisterListener(this)
-        stopLocationUpdates()
+        //startLocationUpdates()
+        // stopLocationUpdates()
         handler.removeCallbacks(runnable)
     }
 
@@ -148,6 +198,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onDestroy()
         // Destruir el BroadcastReceiver
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
+        //stopLocationUpdates()
     }
 
     /**
@@ -173,7 +224,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
 
         // Inicializa el cliente de ubicación
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
+        /*fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
         // Configura la solicitud de ubicación
         locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 500)
@@ -201,48 +252,119 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                     }
                 }
             }
-        }
+        }*/
     }
 
     /**
      *  Registra el BroadcastReceiver para recibir actualizaciones de estilo
      */
     private fun registerBroadcastReceiver() {
-        val filter = IntentFilter("com.example.UPDATE_MAP_STYLE")
-        LocalBroadcastManager.getInstance(this).registerReceiver(mapStyleReceiver, filter)
+        LocalBroadcastManager.getInstance(this).registerReceiver(mapStyleReceiver, IntentFilter("com.example.UPDATE_MAP_STYLE"))
     }
 
+
+
+
+
+    /************************************************************************************************
+     *  SOLICITUD DE PERMISOS PARA FUNCIONAMIENTO DE LA APLICACION                                  *
+     ************************************************************************************************/
+
     /**
-     *  Verifica si existen permisos de localizacion aceptados
+     *  Verifica si existen permisos de foreground y background location aceptados
      */
-    private fun isLocationPermissionGranted() = ContextCompat.checkSelfPermission(
+    private fun checkAndRequestLocationPermissions() {
+        when {
+            isForegroundLocationPermissionGranted() && isBackgroundLocationPermissionGranted() -> {
+                // Todos los permisos son aceptados
+                enableLocation()
+            }
+            !isForegroundLocationPermissionGranted() -> {
+                // Solicitar permiso de foreground location
+                requestForegroundLocationPermission()
+            }
+            else -> {
+                // Solicitar permiso de background location
+                requestBackgroundLocationPermission()
+            }
+        }
+    }
+    /**
+     *  Verifica si existen permisos de foreground location aceptados
+     */
+    private fun isForegroundLocationPermissionGranted() = ContextCompat.checkSelfPermission(
         this,
         Manifest.permission.ACCESS_FINE_LOCATION
     ) == PackageManager.PERMISSION_GRANTED
-
+    /**
+     *  Verifica si existen permisos de background location aceptados
+     */
+    private fun isBackgroundLocationPermissionGranted(): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_BACKGROUND_LOCATION
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            // Para Android versiones anteriores a Q, la ubicación en segundo plano está incluida en ACCESS_FINE_LOCATION
+            true
+        }
+    }
+    /**
+     *  Pide los permisos de Foreground Location al usuario
+     */
+    private fun requestForegroundLocationPermission() {
+        ActivityCompat.requestPermissions(
+            this,
+            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION),
+            REQUEST_FOREGROUND_LOCATION_PERMISSION
+        )
+    }
+    /**
+     *  Pide los permisos de Background Location al usuario
+     */
+    private fun requestBackgroundLocationPermission() {
+        when {
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
+                // Para Android 11 y superiores, redirige al usuario a la configuración de la aplicación
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = Uri.fromParts("package", packageName, null)
+                startActivity(intent)
+            }
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
+                // Para Android 10, pide el permiso de ACCESS_BACKGROUND_LOCATION
+                ActivityCompat.requestPermissions(
+                    this,
+                    arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                    REQUEST_BACKGROUND_LOCATION_PERMISSION
+                )
+            }
+            else -> {
+                // No hay necesidad de solicitar el permiso de ACCESS_BACKGROUND_LOCATION en versiones anteriores a Android 10
+                enableLocation()
+            }
+        }
+    }
     /**
      *  Activar los permisos de Localizacion
      */
     private fun enableLocation() {
-        if(!::map.isInitialized) return
-        if(isLocationPermissionGranted()) {
-            map.isMyLocationEnabled = true
-        } else {
-            requestLocationPermission()
+        if (!::map.isInitialized) return
+        if (ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_FINE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
         }
+        map.isMyLocationEnabled = true
     }
-
     /**
-     *  Pide los permisos de Localizacion al usuario
+     *  Maneja la respuesta de los permisos
      */
-    private fun requestLocationPermission() {
-        if(ActivityCompat.shouldShowRequestPermissionRationale(this,Manifest.permission.ACCESS_FINE_LOCATION)){
-            Toast.makeText(this, "Acepta los permisos en ajustes", Toast.LENGTH_SHORT).show()
-        } else {
-            ActivityCompat.requestPermissions(this, arrayOf(Manifest.permission.ACCESS_FINE_LOCATION), REQUEST_CODE_LOCATION)
-        }
-    }
-
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<out String>,
@@ -250,19 +372,34 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
         when (requestCode) {
-            REQUEST_CODE_LOCATION -> if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                map.isMyLocationEnabled = true
-            } else {
-                Toast.makeText(
-                    this,
-                    "Para aceptar los permisos debes hacerlo desde ajustes",
-                    Toast.LENGTH_SHORT
-                ).show()
+            REQUEST_FOREGROUND_LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    checkAndRequestLocationPermissions()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Permiso Denegado: Foreground location.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
-
-            else -> {}
+            REQUEST_BACKGROUND_LOCATION_PERMISSION -> {
+                if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    enableLocation()
+                } else {
+                    Toast.makeText(
+                        this,
+                        "Permiso Denegado: Background location.",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
+            }
         }
     }
+
+
+
+
 
     /**
      *   Se muestra una notificacion en la localizacion del usuario
@@ -285,16 +422,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         Toast.makeText(this, "Localizacion: ${p0.latitude} , ${p0.longitude}", Toast.LENGTH_SHORT).show()
     }*/
 
-    /**
-     *  Calculo de la distancia entre dos puntos
-     */
-    /*override fun onLocationChanged(location: Location) {
-        val speed = location.speed // Velocidad en m/s
-        val speedKmh = speed * 3.6 // Convertir a km/h
-
-        // Mostrar la velocidad en tu TextView
-        speedText.text = "Velocidad: %.2f km/h".format(speedKmh)
-    }*/
 
 
 
@@ -357,18 +484,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      *  Inicia la actualizacion de la localizacion
      */
+    /*
+    @SuppressLint("MissingPermission")
     private fun startLocationUpdates() {
-        if (ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_FINE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(
-                this,
-                Manifest.permission.ACCESS_COARSE_LOCATION
-            ) != PackageManager.PERMISSION_GRANTED
-        ) {
-            requestLocationPermission()
-            return
-        }
         fusedLocationClient.requestLocationUpdates(
             locationRequest,
             locationCallback,
@@ -378,6 +496,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private fun stopLocationUpdates() {
         fusedLocationClient.removeLocationUpdates(locationCallback)
     }
+    */
     private fun updateMapLocation(latLng: LatLng, streetName: String) {
         if (::map.isInitialized) {
             lastMarker?.remove()
@@ -386,11 +505,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                     .position(latLng)
                     .title("Estás en: $streetName")
             )
-            //map.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 15f))
         }
     }
 
-    private fun logPrintSpeed(speed: Double, maxSpeed: Double) {
+    private fun logPrintSpeed(speed: Double?, maxSpeed: Double) {
         Log.e("logPrintSpeed", "Velocidad actual: $speed km/h - Velocidad maxima: $maxSpeed km/h")
     }
     /**
@@ -398,6 +516,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      * FEATURE IMPLEMENTACION DE DETECCION DE UBICACION POR MAPA LOCAL
      * ---------------------------------------------------------------------------------------------------------------------------------------------
      */
+    /*
     private lateinit var geoJsonData: JSONArray
     // Cargar mapa de calles de Quito
     private fun loadGeoJson() {
@@ -453,29 +572,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         return R * c
     }
-    private fun getCurrentLocation(latLng: LatLng) {
-        // Cargar JSON
-        if (!::geoJsonData.isInitialized) {
-            loadGeoJson()
-        }
-        // Buscar el segmento de carretera más cercano
-        val nearestFeature = findNearestRoadSegment(latLng)
-        direccion = nearestFeature
-
-        if (nearestFeature != null) {
-            val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
-            maxSpeed = getMaxSpeed(nearestFeature).toDouble()
-
-            runOnUiThread {
-                //Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
-                updateMapLocation(latLng, streetName)
-            }
-        } else {
-            runOnUiThread {
-                Toast.makeText(this, "No se encontró información de la calle.", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
     // Establecer limites de velocidad por tipos de calles
     private fun getMaxSpeed(feature: JSONObject): String {
         val properties = feature.getJSONObject("properties")
@@ -491,13 +587,37 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             else -> "Desconocido"
         }
     }
+    private fun getCurrentLocation(latLng: LatLng) {
+        // Cargar JSON
+        if (!::geoJsonData.isInitialized) {
+            loadGeoJson()
+        }
+        // Buscar el segmento de carretera más cercano
+        val nearestFeature = findNearestRoadSegment(latLng)
+        direccion = nearestFeature
+        println("direccion: $direccion")
 
+        if (nearestFeature != null) {
+            val streetName = nearestFeature.getJSONObject("properties").optString("name", "Calle desconocida")
+            maxSpeed = getMaxSpeed(nearestFeature).toDouble()
+
+            runOnUiThread {
+                //Toast.makeText(this, "Estás en: $streetName. Límite de velocidad: $maxSpeed km/h", Toast.LENGTH_LONG).show()
+                updateMapLocation(latLng, streetName)
+            }
+        } else {
+            runOnUiThread {
+                Toast.makeText(this, "No se encontró información de la calle.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+     */
 
 
     /*********************************************************************************************
      * Sistema de navegacion GPS
      ********************************************************************************************/
-
+    /*
     private var lastLocation: Location? = null
     private var speed: Double = 0.0
     private var maxSpeed: Double = 0.0
@@ -505,10 +625,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      * Obtener velocidad actual por medio de GPS
      */
+
     private fun getSpeed(location: Location) {
         if (location.hasSpeed()) {
-            speed = location.speed * 3.6 // Convertir a km/h
-            //speed = 110.0
+            //speed = location.speed * 3.6 // Convertir a km/h
+            speed = 300.0
         } else if (lastLocation != null) {
             val distanceInMeters = lastLocation!!.distanceTo(location)
             val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
@@ -524,7 +645,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         updateGlow(speed, maxSpeed)
         lastLocation = location
     }
-
+    */
 
 
 
@@ -621,7 +742,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      * Envio de datos a endpoint
      */
-    private suspend fun sendData() {
+    /*private suspend fun sendData() {
         /*
         val jsonObject = JSONObject().apply {
             put("latitud", latitud)
@@ -646,7 +767,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         ref.saveInfoToSv(retrofitService, newRegister)
         //ref.loadLocalRegsSv()
-    }
+    }*/
 
     private val runnable = object : Runnable {
         override fun run() {
@@ -656,5 +777,21 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             // Programar la siguiente ejecución en 10 minutos
             handler.postDelayed(this, interval)
         }
+    }
+
+
+
+    private fun startSpeedService() {
+        // Iniciar el servicio de actualización de ubicación si la versión de Android es mayor o igual a Orea
+        val intent = Intent(this, SpeedService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(intent)
+        } else {
+            startService(intent)
+        }
+    }
+    private fun stopSpeedService() {
+        val serviceIntent = Intent(this, SpeedService::class.java)
+        stopService(serviceIntent)
     }
 }

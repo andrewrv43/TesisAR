@@ -10,4 +10,6 @@
     <string name="title_activity_info">InfoActivity</string>
     <string name="btn_info">Botón de configuracion</string>
     <string name="autores">Andrew Rueda | Ronny Rosero</string>
+    <string name="ProfileActivity">ProfileActivity</string>
+
 </resources>

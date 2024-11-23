@@ -75,6 +75,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var map: GoogleMap
     private lateinit var infoBtn: ImageView
     private lateinit var infoBtn2: Button
+    private lateinit var profileBtn: ImageView
+    private lateinit var profileBtn2: Button
     private var latitud: Double = 0.0
     private var longitud: Double = 0.0
     private var direccion: JSONObject? = null
@@ -97,6 +99,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
     val ref = Referencias(context = this)
     private lateinit var retrofitService: RetrofitService
+    private var backPressedTime: Long = 0
+    private lateinit var toast: Toast
 
     companion object { const val REQUEST_FOREGROUND_LOCATION_PERMISSION = 1000
                         const val REQUEST_BACKGROUND_LOCATION_PERMISSION = 2000}
@@ -220,6 +224,18 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
         infoBtn2.setOnClickListener {
             val intent = Intent(this, InfoActivity::class.java)
+            startActivity(intent)
+        }
+        profileBtn = findViewById(R.id.perfilBtn)
+        profileBtn2 = findViewById(R.id.perfilBtn2)
+
+        // Establecer el listener de click para lanzar ProfileActivity
+        profileBtn.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
+            startActivity(intent)
+        }
+        profileBtn2.setOnClickListener {
+            val intent = Intent(this, ProfileActivity::class.java)
             startActivity(intent)
         }
 
@@ -777,6 +793,17 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             // Programar la siguiente ejecución en 10 minutos
             handler.postDelayed(this, interval)
         }
+    }
+    override fun onBackPressed() {
+        if (backPressedTime + 2000 > System.currentTimeMillis()) {
+            toast.cancel()
+            super.onBackPressed()
+            return
+        } else {
+            toast = Toast.makeText(this, "Presiona nuevamente para salir", Toast.LENGTH_SHORT)
+            toast.show()
+        }
+        backPressedTime = System.currentTimeMillis()
     }
 
 

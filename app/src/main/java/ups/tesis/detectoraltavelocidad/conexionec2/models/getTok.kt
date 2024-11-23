@@ -43,3 +43,15 @@ data class envRegistro(
     val speed: String,
     val streetMaxSpeed: String
 )
+data class showRegs(
+    val direccion: String,
+    val fecha: String,
+    val velocidad: String,
+    val street_max_speed: String,
+    val id: String
+
+)
+data class obtRegsId(
+    val records: List<showRegs>,
+    val total_length: String
+)

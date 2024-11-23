@@ -59,6 +59,9 @@ class MainActivity : AppCompatActivity() {
     var usrInfo:MutableMap<String, Any> = mutableMapOf()
     lateinit var retrofitService:RetrofitService
     lateinit var ref: Referencias
+    private var backPressedTime: Long = 0
+    private lateinit var toast: Toast
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
 
@@ -123,6 +126,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
     private suspend fun btnLogginOnClick() {
+        progressBar.bringToFront()
+        progressBar.visibility = View.VISIBLE
+        blurView.visibility = View.VISIBLE
         if(estado){
             val loginReq = tokenRequest(
                 username = struser.text.toString(),
@@ -136,6 +142,9 @@ class MainActivity : AppCompatActivity() {
             retrofitService = updatedRetrofitService
             if ( success|| struser.text.toString()=="admin"){
                 Log.d("changetomaps", "change exitoso")
+                Toast.makeText(this,"Inicio de Sesión Exitoso",Toast.LENGTH_SHORT).show()
+                progressBar.visibility = View.GONE
+                blurView.visibility = View.GONE
                 changeToMaps()
             }
         }else{
@@ -147,6 +156,8 @@ class MainActivity : AppCompatActivity() {
                ref.alertBox(titulo = "ALERTA", texto = R.string.txtContraseñaNoCoincide, btnTxt = "Continuar")
            }
         }
+        progressBar.visibility = View.GONE
+        blurView.visibility = View.GONE
     }
     private fun btnCrearCuentaOnClick() {
         if (estado){
@@ -166,7 +177,8 @@ class MainActivity : AppCompatActivity() {
             if (it.isSuccessful) {
                 val result = it.body()
                 result?.let { res ->
-                    println("Cuenta creada exitosamente: ${res.user}, ID: ${res.id}")
+//                    println("Cuenta creada exitosamente: ${res.user}, ID: ${res.id}")
+                    Toast.makeText(this, "Cuenta creada exitosamente !Bienvenido!: ${res.user}", Toast.LENGTH_SHORT).show()
                     usrInfo = mutableMapOf("id" to res.id, "user" to res.user)
                 }
                 true
@@ -197,6 +209,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private suspend fun makeCreateAccountRequest(request: userCreate): Response<resultCreacion>? {
+        retrofitService = ref.initializeRetrofitService()
         return try {
             val response = retrofitService.createAccount(request)
 
@@ -245,9 +258,23 @@ class MainActivity : AppCompatActivity() {
         blurView.visibility = View.GONE
     }
 
-    private fun changeToMaps(){
-        val intent=Intent(this, MapsActivity::class.java)
+    private fun changeToMaps() {
+        val intent = Intent(this, MapsActivity::class.java)
+        intent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK)
         startActivity(intent)
+        finish()
     }
+    override fun onBackPressed() {
+        if (backPressedTime + 2000 > System.currentTimeMillis()) {
+            toast.cancel()
+            super.onBackPressed()
+            return
+        } else {
+            toast = Toast.makeText(this, "Presiona nuevamente para salir", Toast.LENGTH_SHORT)
+            toast.show()
+        }
+        backPressedTime = System.currentTimeMillis()
+    }
+
 
 }

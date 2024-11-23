@@ -16,13 +16,16 @@ import com.google.android.material.button.MaterialButton
 import com.google.android.material.textview.MaterialTextView
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
 import ups.tesis.detectoraltavelocidad.conexionec2.models.showRegs
 import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 
 
+
 class ProfileActivity:AppCompatActivity() {
     private lateinit var ref: Referencias
+    private lateinit var data:CargaDatos
     private lateinit var recyclerView: RecyclerView
     private lateinit var recyclerViewLocal: RecyclerView
     private lateinit var localView: RecyclerView
@@ -34,8 +37,10 @@ class ProfileActivity:AppCompatActivity() {
     private lateinit var quantity: MaterialTextView
     private lateinit var retrofitService: RetrofitService
     private lateinit var logout: MaterialButton
+
     @SuppressLint("SetTextI18n")
     override fun onCreate(savedInstanceState: Bundle?) {
+        data = CargaDatos()
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_profile)
         ref = Referencias(this)
@@ -56,8 +61,9 @@ class ProfileActivity:AppCompatActivity() {
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
         retrofitService = ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
-
-        cargarDatos()
+        lifecycleScope.launch {
+            cargarDatos()
+        }
         logout.setOnClickListener {
             for (values in arrayOf("auth_token", "username", "password")) {
                 ref.removeFromPreferences(values)
@@ -74,7 +80,7 @@ class ProfileActivity:AppCompatActivity() {
 
     }
 
-    private fun cargarDatos() {
+    private suspend fun cargarDatos() {
         if (ref.hayConexionAInternet(this)) {
             try {
                 mostrarVistaOnline()
@@ -134,8 +140,8 @@ class ProfileActivity:AppCompatActivity() {
         }
     }
     @SuppressLint("NotifyDataSetChanged")
-    private fun cargarRegistrosLocal() {
-        val listregistros = ref.obtainLocalRegs()
+    private suspend fun cargarRegistrosLocal() {
+        val listregistros = data.obtainLocalRegs(dataStore)
         if (listregistros.isNotEmpty()) {
             for (reg in listregistros) {
                 var dir = "Aun ubicandote"

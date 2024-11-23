@@ -8,8 +8,11 @@ import android.os.Build
 import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import org.json.JSONArray
 import org.json.JSONObject
 import retrofit2.Response
@@ -22,7 +25,11 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
-
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 class Referencias(val context: Context){
     /**
      * Obtiene las preferencias compartidas.
@@ -74,56 +81,7 @@ class Referencias(val context: Context){
         artDialogBuilder.create().show()
     }
 
-    suspend fun saveInfoToSv(retrofitService: RetrofitService, newRegister: envRegistro,local:Boolean=false):Int{
-        try {
-            val response = retrofitService.newRecord(newRegister)
-            if (response.isSuccessful){
-                Toast.makeText(context, "Registro exitoso", Toast.LENGTH_SHORT).show()
-                return 1
-            }else{
-                Toast.makeText(context, "Registro Fallido", Toast.LENGTH_SHORT).show()
-                return 1
-            }
-        } catch (e: ConnectException) {
-            if(local){
-                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
-            }else{
-                addNewLocalRegister(newRegister)
-                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
-            }
-            Log.e("saveInfoToSv", "Error de conexión: ${e.message}")
-            return 0
-        } catch (e: SocketTimeoutException) {
-            if(local){
-                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
-            }else{
-                addNewLocalRegister(newRegister)
-                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
-            }
-            Log.e("saveInfoToSv", "Tiempo de espera agotado: ${e.message}")
-            return 0
-        } catch (e: IOException) {
-            if(local){
-                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
-            }else{
-                addNewLocalRegister(newRegister)
-                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
-            }
-            Log.e("saveInfoToSv", "Error de entrada/salida: ${e.message}")
-            return 0
-        } catch (e: Exception) {
-            if(local){
-                Toast.makeText(context, "Datos locales no cargados", Toast.LENGTH_SHORT).show()
 
-            }else{
-                addNewLocalRegister(newRegister)
-                Toast.makeText(context, "No existe conexion los datos seran guardados de manera local", Toast.LENGTH_SHORT).show()
-            }
-            Log.e("saveInfoToSv", "Error inesperado: ${e.message}")
-            return 0
-        }
-
-    }
     suspend fun getLifeTimeToken(retrofitService:RetrofitService): Int {
         return try {
             val response = retrofitService.getTimeLeft()
@@ -198,99 +156,8 @@ class Referencias(val context: Context){
         }
     }
 
-    fun addNewLocalRegister(newRegister: envRegistro){
-        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        val gson = Gson()
 
-        val jsonArrayString = sharedPreferences.getString("envRegistro", null)
-        val registrosList: MutableList<envRegistro> = if (jsonArrayString != null) {
-            val type = object : TypeToken<MutableList<envRegistro>>() {}.type
-            gson.fromJson(jsonArrayString, type)
-        } else {
-            mutableListOf()
-        }
-        registrosList.add(newRegister)
-        val newJsonArrayString = gson.toJson(registrosList)
-        editor.putString("envRegistro", newJsonArrayString)
-        editor.apply()
-    }
-    fun obtainLocalRegs():List<envRegistro>{
-        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
-        val gson = Gson()
-        val jsonArrayString = sharedPreferences.getString("envRegistro", null)
 
-        return if (jsonArrayString != null) {
-            val type = object : TypeToken<List<envRegistro>>() {}.type
-            gson.fromJson(jsonArrayString, type)
-        } else {
-            emptyList()
-        }
-    }
-    suspend fun saveInfoBatchToSv(
-        retrofitService: RetrofitService,
-        registerList: List<envRegistro>
-    ): Int {
-        return try {
-            var total = 0
-            val response = retrofitService.saveBatch(registerList)
-            if (response.isSuccessful) {
-                val responseBody = response.body()
-                responseBody?.let {
-                    if (it.count.toInt() != 0){
-                        total = it.count.toInt()
-                        Log.e("saveInfoBatchToSv", "${responseBody} ")
-
-                    }else{
-                        0
-                    }
-                }
-                total
-            } else {
-                0
-            }
-        }catch (e: ConnectException){
-            Log.e("saveInfoBatchToSv", "Error de conexión: ${e.message} Al cargar todos los datos locales")
-            0
-        }catch (e: SocketTimeoutException){
-            Log.e("saveInfoBatchToSv", "Tiempo de espera agotado: ${e.message} Al cargar todos los datos locales")
-        0
-        }catch (e: IOException){
-            Log.e("saveInfoBatchToSv", "Error de entrada/salida: ${e.message} Al cargar todos los datos locales")
-        0
-        }catch (e: Exception){
-            Log.e("saveInfoBatchToSv", "Error inesperado: ${e.message} Al cargar todos los datos locales")
-        0
-        }
-    }
-    suspend fun loadLocalRegsSv() {
-
-            val localRegs = obtainLocalRegs().toMutableList()
-
-            if (localRegs.isNotEmpty()) {
-                val retrofitService = initializeRetrofitService(getFromPreferences("auth_token"))
-                val result = saveInfoBatchToSv(
-                    retrofitService = retrofitService,
-                    registerList = localRegs
-                )
-                if (result !=0) {
-                    Log.e("loadLocalRegsSv", "Se enviaron todos los datos locales correctamente y se eliminarán. Se enviaron un total de $result registros.")
-                    // Si la operación fue exitosa, limpiar los registros locales
-                    saveEnvRegistros(emptyList())
-                } else {
-                    Log.e("loadLocalRegsSv", "Error inesperado: No se enviaron todos los datos locales.")
-                }
-            }
-
-    }
-    fun saveEnvRegistros( registros: List<envRegistro>) {
-        val sharedPreferences = context.getSharedPreferences("localRegs", Context.MODE_PRIVATE)
-        val editor = sharedPreferences.edit()
-        val gson = Gson()
-        val jsonArrayString = gson.toJson(registros)
-        editor.putString("envRegistro", jsonArrayString)
-        editor.apply()
-    }
     suspend fun get_speed_data_per_user(
         retrofitService: RetrofitService,
         limit: Int
@@ -319,7 +186,7 @@ class Referencias(val context: Context){
             null
         } catch (e: IOException) {
             Log.e("get_speed_data_per_user", "Error de entrada/salida: ${e.message} al obtener registros")
-            null
+            return get_speed_data_per_user(retrofitService,limit)
         } catch (e: Exception) {
             Log.e("get_speed_data_per_user", "Error inesperado: ${e.message} al obtener registros")
             null
@@ -339,4 +206,160 @@ class Referencias(val context: Context){
             return networkInfo != null && networkInfo.isConnected
         }
     }
+}
+
+class CargaDatos(){
+    suspend fun saveInfoToSv(context: DataStore<Preferences>,retrofitService: RetrofitService, newRegister: envRegistro, local: Boolean = false): Int {
+        try {
+            if(newRegister.streetMaxSpeed.toDouble()==0.00){
+                Log.e("saveInfoToSv", "Dato no valido velocidad maxima = 0")
+                return 0
+            }
+            val response = retrofitService.newRecord(newRegister)
+            if (response.isSuccessful) {
+                Log.i("saveInfoToSv", "Registro exitoso")
+                return 1
+            } else {
+                Log.i("saveInfoToSv", "Registro fallido")
+                return 1
+            }
+        } catch (e: ConnectException) {
+            if (local) {
+                Log.e("saveInfoToSv", "Datos locales no cargados debido a un error de conexión: ${e.message}")
+            } else {
+                addNewLocalRegister(context,newRegister)
+                Log.e("saveInfoToSv", "No existe conexión, los datos serán guardados de manera local: ${e.message}")
+            }
+            return 0
+        } catch (e: SocketTimeoutException) {
+            if (local) {
+                Log.e("saveInfoToSv", "Datos locales no cargados debido a un tiempo de espera agotado: ${e.message}")
+            } else {
+                addNewLocalRegister(context,newRegister)
+                Log.e("saveInfoToSv", "No existe conexión, los datos serán guardados de manera local: ${e.message}")
+            }
+            return 0
+        } catch (e: IOException) {
+            if (local) {
+                Log.e("saveInfoToSv", "Datos locales no cargados debido a un error de entrada/salida: ${e.message}")
+            }
+            return 0
+        } catch (e: Exception) {
+            if (local) {
+                Log.e("saveInfoToSv", "Datos locales no cargados debido a un error inesperado: ${e.message}")
+            } else {
+                addNewLocalRegister(context,newRegister)
+                Log.e("saveInfoToSv", "No existe conexión, los datos serán guardados de manera local: ${e.message}")
+            }
+            return 0
+        }
+    }
+
+    suspend fun addNewLocalRegister(dataStore: DataStore<Preferences>, newRegister: envRegistro) {
+        val gson = Gson()
+
+        dataStore.edit { preferences ->
+            // Leer el JSON existente
+            val jsonArrayString = preferences[stringPreferencesKey("envRegistro")]
+            val registrosList: MutableList<envRegistro> = if (jsonArrayString != null) {
+                val type = object : TypeToken<MutableList<envRegistro>>() {}.type
+                gson.fromJson(jsonArrayString, type)
+            } else {
+                mutableListOf()
+            }
+
+            // Agregar el nuevo registro
+            registrosList.add(newRegister)
+
+            // Convertir de nuevo a JSON y guardarlo
+            val newJsonArrayString = gson.toJson(registrosList)
+            preferences[stringPreferencesKey("envRegistro")] = newJsonArrayString
+        }
+    }
+    val envRegistroKey = stringPreferencesKey("envRegistro")
+
+    // Obtener registros locales desde DataStore
+    suspend fun obtainLocalRegs(dataStore: DataStore<Preferences>): List<envRegistro> {
+        val gson = Gson()
+
+        val jsonArrayString = dataStore.data.map { preferences ->
+            preferences[envRegistroKey] ?: "[]" // Devuelve un array vacío si no hay datos
+        }.first() // Toma el primer valor emitido por el flujo
+
+        return if (jsonArrayString.isNotEmpty()) {
+            val type = object : TypeToken<List<envRegistro>>() {}.type
+            gson.fromJson(jsonArrayString, type)
+        } else {
+            emptyList()
+        }
+    }
+
+    // Guardar registros locales en DataStore
+    suspend fun saveEnvRegistros(dataStore: DataStore<Preferences>, registros: List<envRegistro>) {
+        val gson = Gson()
+        val jsonArrayString = gson.toJson(registros)
+
+        dataStore.edit { preferences ->
+            preferences[envRegistroKey] = jsonArrayString
+        }
+    }
+
+    // Guardar múltiples registros en el servidor
+    suspend fun saveInfoBatchToSv(
+        retrofitService: RetrofitService,
+        registerList: List<envRegistro>
+    ): Int {
+        return try {
+            var total = 0
+            val response = retrofitService.saveBatch(registerList)
+            if (response.isSuccessful) {
+                val responseBody = response.body()
+                responseBody?.let {
+                    if (it.count.toInt() != 0) {
+                        total = it.count.toInt()
+                        Log.e("saveInfoBatchToSv", "$responseBody ")
+                    }
+                }
+                total
+            } else {
+                0
+            }
+        } catch (e: ConnectException) {
+            Log.e("saveInfoBatchToSv", "Error de conexión: ${e.message} Al cargar todos los datos locales")
+            0
+        } catch (e: SocketTimeoutException) {
+            Log.e("saveInfoBatchToSv", "Tiempo de espera agotado: ${e.message} Al cargar todos los datos locales")
+            0
+        } catch (e: IOException) {
+            Log.e("saveInfoBatchToSv", "Error de entrada/salida: ${e.message} Al cargar todos los datos locales")
+            0
+        } catch (e: Exception) {
+            Log.e("saveInfoBatchToSv", "Error inesperado: ${e.message} Al cargar todos los datos locales")
+            0
+        }
+    }
+
+    // Procesar registros locales y enviarlos al servidor
+    suspend fun loadLocalRegsSv(dataStore: DataStore<Preferences>, retrofitService: RetrofitService) {
+        val localRegs = obtainLocalRegs(dataStore).toMutableList()
+
+        if (localRegs.isNotEmpty()) {
+            val result = saveInfoBatchToSv(
+                retrofitService = retrofitService,
+                registerList = localRegs
+            )
+            if (result != 0) {
+                Log.e(
+                    "loadLocalRegsSv",
+                    "Se enviaron todos los datos locales correctamente y se eliminarán. Se enviaron un total de $result registros."
+                )
+                // Si la operación fue exitosa, limpiar los registros locales
+                saveEnvRegistros(dataStore, emptyList())
+            } else {
+                Log.e("loadLocalRegsSv", "Error inesperado: No se enviaron todos los datos locales.")
+            }
+        }
+    }
+
+
 }

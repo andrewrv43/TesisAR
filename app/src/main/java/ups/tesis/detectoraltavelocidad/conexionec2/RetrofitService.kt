@@ -52,7 +52,7 @@ object RetrofitServiceFactory {
         }
 
         val client = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
@@ -60,7 +60,7 @@ object RetrofitServiceFactory {
             .addInterceptor { chain ->
                 val request: Request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")
-                    .addHeader("Connection", "close")  // Añadir "Connection: close"
+                    .addHeader("Connection", "keep-alive")  // Añadir "Connection: alive"
                     .build()
                 val response = chain.proceed(request)
 

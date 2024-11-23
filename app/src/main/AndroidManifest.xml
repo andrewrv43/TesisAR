@@ -48,7 +48,8 @@
             android:name=".services.SpeedService"
             android:enabled="true"
             android:exported="true"
-            android:foregroundServiceType="location" />
+            android:foregroundServiceType="location"
+            android:stopWithTask="true"/>
 
     <activity
         android:name=".ProfileActivity"

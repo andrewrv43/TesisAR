@@ -65,6 +65,7 @@ dependencies {
     implementation ("com.squareup.okhttp3:logging-interceptor:4.9.1")
     implementation ("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation ("com.google.code.gson:gson:2.10.1")
+    implementation(libs.androidx.lifecycle.service)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

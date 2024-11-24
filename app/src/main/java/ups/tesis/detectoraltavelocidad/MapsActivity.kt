@@ -171,6 +171,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         glowContainer.startAnimation(pulseAnimation)
         retrofitService=ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
         data= CargaDatos()
+        if(ref.hayConexionAInternet(this)){
+            actualizacionApp()
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -829,5 +832,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private fun stopSpeedService() {
         val serviceIntent = Intent(this, SpeedService::class.java)
         stopService(serviceIntent)
+    }
+
+    private fun actualizacionApp(){
+        lifecycleScope.launch {
+            ref.actualizacion(retrofitService)
+        }
     }
 }

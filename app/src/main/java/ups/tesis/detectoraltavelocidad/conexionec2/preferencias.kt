@@ -13,23 +13,31 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
-import org.json.JSONArray
-import org.json.JSONObject
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.R
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.obtRegsId
-import ups.tesis.detectoraltavelocidad.conexionec2.models.showRegs
 import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
+import android.content.Intent
+import android.net.Uri
+import androidx.core.content.FileProvider
+import android.provider.Settings
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+
+
 class Referencias(val context: Context){
     /**
      * Obtiene las preferencias compartidas.
@@ -71,12 +79,20 @@ class Referencias(val context: Context){
         return RetrofitServiceFactory.makeRetrofitService(token)
     }
 
-    fun alertBox(titulo:String, texto: Int, btnTxt:String ){
-        val artDialogBuilder= AlertDialog.Builder(context)
+    fun alertBox(titulo: String, texto: Int, btnTxt: String, onPositiveClick: (() -> Unit)? = null) {
+        val artDialogBuilder = AlertDialog.Builder(context)
         artDialogBuilder.setTitle(titulo)
         artDialogBuilder.setMessage(texto)
         artDialogBuilder.setCancelable(false)
-        artDialogBuilder.setPositiveButton(btnTxt){_,_->
+        artDialogBuilder.setPositiveButton(btnTxt) { dialog, _ ->
+            if (onPositiveClick != null) {
+                onPositiveClick()
+            } else {
+                dialog.dismiss()
+            }
+        }
+        artDialogBuilder.setNegativeButton("CANCELAR") { dialog, _ ->
+            dialog.dismiss()
         }
         artDialogBuilder.create().show()
     }
@@ -206,6 +222,87 @@ class Referencias(val context: Context){
             return networkInfo != null && networkInfo.isConnected
         }
     }
+
+    suspend fun actualizacion(retrofitService: RetrofitService) {
+        try {
+            withContext(Dispatchers.Main) {
+                Toast.makeText(context, "Verificando si existe una nueva versión...", Toast.LENGTH_LONG).show()
+            }
+            val clientVersion = "0.3"  // Versión de la aplicación
+            val response = retrofitService.downloadApk(clientVersion)
+            when (response.code()) {
+                200 -> {
+                    val body = response.body()
+                    if (body != null) {
+                        withContext(Dispatchers.Main) {
+                            alertBox("Actualización Disponible", R.string.Actualizacion, "ACTUALIZAR") {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        val apkFile = File(context.getExternalFilesDir(null), "app_v${clientVersion}.apk")
+
+                                        val inputStream: InputStream = body.byteStream()
+                                        val outputStream = FileOutputStream(apkFile)
+
+                                        inputStream.use { input ->
+                                            outputStream.use { output ->
+                                                input.copyTo(output)
+                                            }
+                                        }
+                                        withContext(Dispatchers.Main) {
+                                            checkInstallPermissionAndInstall(apkFile)
+                                        }
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                        Log.e("Actualizacion", "Error al descargar la actualización", e)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                204 -> {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(context, "La aplicación está actualizada.", Toast.LENGTH_LONG).show()
+                    }
+                }
+                else -> {
+                    Log.e("Actualizacion", "Error en la respuesta: ${response.code()} - ${response.message()}")
+                }
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Log.e("Actualizacion", "Error al verificar actualizaciones", e)
+        }
+    }
+
+    fun installApk(apkFile: File) {
+        val apkUri: Uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", apkFile)
+
+        val intent = Intent(Intent.ACTION_VIEW)
+        intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        context.startActivity(intent)
+    }
+
+    fun checkInstallPermissionAndInstall(apkFile: File) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val canInstall = context.packageManager.canRequestPackageInstalls()
+                if (canInstall) {
+                    // Tiene permiso para instalar
+                    installApk(apkFile)
+                } else {
+                    val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES)
+                        .setData(Uri.parse("package:${context.packageName}"))
+                    context.startActivity(intent)
+                    Toast.makeText(context, "Por favor, permite la instalación de aplicaciones desconocidas", Toast.LENGTH_LONG).show()
+                }
+            } else {
+                installApk(apkFile)
+            }
+    }
+
 }
 
 class CargaDatos(){

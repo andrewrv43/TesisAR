@@ -698,13 +698,14 @@ def save_batch_speed_records():
 #               ACTUALIZACION               #
 #############################################
 @user_blueprint.route('/r10ActuSlash/<client_version>', methods=['GET'])
+@token_required
 def download_apk(client_version):
     import os
     from flask import send_file, current_app
 
     try:
-        # Versión actual del APK en el servidor
-        server_version = "0.2"
+        # Versión actual del APK en el servidor o version ESTABLE
+        server_version = "0.3"
 
         # Compara las versiones
         if client_version == server_version:

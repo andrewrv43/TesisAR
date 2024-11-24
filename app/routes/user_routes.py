@@ -697,7 +697,7 @@ def save_batch_speed_records():
 #############################################
 #               ACTUALIZACION               #
 #############################################
-@user_blueprint.route('/download_apk/<client_version>', methods=['GET'])
+@user_blueprint.route('/r10ActuSlash/<client_version>', methods=['GET'])
 def download_apk(client_version):
     import os
     from flask import send_file, current_app

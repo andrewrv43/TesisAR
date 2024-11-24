@@ -61,7 +61,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var zValueText: TextView
     private lateinit var speedText: TextView
 
-    private var lastLocation: Location? = null
     private var speed: Double = 0.0
     private var maxSpeed: Double = 0.0
 
@@ -90,7 +89,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                 service.speedLiveData.observe(this@MapsActivity, Observer { speed ->
                     // Actualiza la UI con la velocidad
                     speedText.text = "Velocidad: %.2f km/h".format(speed)
+                    updateGlow(speed, maxSpeed)
                     Log.d("SpeedService", "MapsActivity Recibe data $speed serviceConnection")
+                })
+                service.maxSpeedLiveData.observe(this@MapsActivity, Observer { maxSpeed ->
+                    this@MapsActivity.maxSpeed = maxSpeed
                 })
             }
         }
@@ -348,6 +351,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      */
     private fun updateGlow(speed: Double, limit: Double) {
         when {
+            limit == 0.0 -> {
+                glowContainer.startAnimation(null)
+            }
             // Si la velocidad es mayor a +10 km/h del límite, rojo
             speed > limit + 10 -> {
                 glowContainer.setBackgroundResource(R.drawable.border_glow_red)

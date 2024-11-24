@@ -64,6 +64,7 @@ class SpeedService : LifecycleService() {
     }
 
     val speedLiveData = MutableLiveData<Double>()
+    val maxSpeedLiveData = MutableLiveData<Double>()
 
     override fun onCreate() {
         super.onCreate()
@@ -141,6 +142,7 @@ class SpeedService : LifecycleService() {
                         getCurrentLocation(currentLatLng)
                         getSpeed(location)
                         speedLiveData.postValue(speed)
+                        maxSpeedLiveData.postValue(maxSpeed)
                         Log.d("SpeedService", "Recolectando velocidad y ubicacion en segundo plano")
 
                         val currentTime = System.currentTimeMillis()

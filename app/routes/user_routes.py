@@ -7,6 +7,7 @@ import datetime
 import jwt
 from app.auth_middleware import token_required
 import threading
+import os
 user_blueprint = Blueprint('user', __name__)
 
 def send_email_async(subject, body):
@@ -691,3 +692,44 @@ def save_batch_speed_records():
 
     except Exception as e:
         return jsonify({'message': f'Error al procesar los registros: {str(e)}'}), 500
+
+
+#############################################
+#               ACTUALIZACION               #
+#############################################
+@user_blueprint.route('/download_apk/<client_version>', methods=['GET'])
+def download_apk(client_version):
+    import os
+    from flask import send_file, current_app
+
+    try:
+        # Versión actual del APK en el servidor
+        server_version = "0.2"
+
+        # Compara las versiones
+        if client_version == server_version:
+            # Las versiones son iguales, no hay actualización
+            return '', 204  # No Content
+
+        # Ruta al archivo APK
+        apk_directory = os.path.join(current_app.root_path, 'apk_version')
+        apk_filename = f'app_v{server_version.replace(".", "_")}.apk'
+        apk_path = os.path.join(apk_directory, apk_filename)
+
+        # Verifica si el archivo existe
+        if not os.path.exists(apk_path):
+            return jsonify({'message': 'APK no encontrado'}), 404
+
+        response = send_file(
+            apk_path,
+            mimetype='application/vnd.android.package-archive',
+            as_attachment=True,
+            download_name=f'app_v{server_version}.apk'
+        )
+
+        response.headers['X-App-Version'] = server_version
+
+        return response, 200
+
+    except Exception as e:
+        return jsonify({'message': f'Error al descargar el APK: {str(e)}'}), 500

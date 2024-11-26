@@ -453,7 +453,8 @@ def create_sp_record():
     return jsonify(new_record), 201
 
 
-@user_blueprint.route('/get_spdrecords', methods=['GET'])
+@user_blueprint.route('/get_spdrecords', defaults={'id': None}, methods=['GET'])
+@user_blueprint.route('/get_spdrecords/<id>', methods=['GET'])
 @token_required
 @swag_from({
     'tags': ['Velocity Records'],
@@ -518,9 +519,12 @@ def create_sp_record():
         }
     }
 })
-def obtainallrecords():  
-    response = SpeedRecord.get_all_speed_records()
-    return jsonify(response), 200
+def obtainallrecords(id):  
+    try:
+        response = SpeedRecord.get_all_speed_records(id = id)
+        return jsonify(response), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 400
 
 @user_blueprint.route('/get_spdrecord_user',methods=['GET'])
 @token_required

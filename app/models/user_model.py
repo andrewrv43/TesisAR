@@ -1,6 +1,7 @@
 from bson.objectid import ObjectId
 from app.database import db
 from datetime import datetime
+from bson.objectid import ObjectId
 
 class UserModel:
 #########################################
@@ -67,8 +68,11 @@ class UserModel:
 
 class SpeedRecord:
     @staticmethod
-    def  get_all_speed_records():
-        records = db['sp_record'].find()
+    def  get_all_speed_records(id=None):
+        query = {}
+        if id:
+            query['_id'] = {'$gt': ObjectId(id)}
+        records = db['sp_record'].find(query)
         return [{'id': str(spdRecord['_id']),
                  'direccion':spdRecord['direccion'],
                  'latitud': spdRecord['latitud'],

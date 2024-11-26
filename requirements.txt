@@ -4,3 +4,4 @@ flasgger
 python-dotenv
 PyJWT
 mail
+orjson

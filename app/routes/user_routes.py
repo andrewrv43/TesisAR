@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request,Response
 from app.models.user_model import UserModel,SpeedRecord
 from flasgger import swag_from
 from app.config import Config
@@ -8,6 +8,7 @@ import jwt
 from app.auth_middleware import token_required
 import threading
 import os
+import orjson
 user_blueprint = Blueprint('user', __name__)
 
 def send_email_async(subject, body):
@@ -522,7 +523,9 @@ def create_sp_record():
 def obtainallrecords(id):  
     try:
         response = SpeedRecord.get_all_speed_records(id = id)
-        return jsonify(response), 200
+        return Response(
+        orjson.dumps(response),status=200,content_type='application/json'
+    )
     except Exception as e:
         return jsonify({'error': str(e)}), 400
 

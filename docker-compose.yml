@@ -12,6 +12,7 @@ services:
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
     ports:
       - "27017:27017"
+    restart: unless-stopped
 
   flask_app:
     environment:
@@ -31,6 +32,7 @@ services:
     env_file:
       - .env
     entrypoint: ["sh", "-c", "pip install -r requirements.txt && python run.py"]
+    restart: unless-stopped
 
 volumes:
   mongo_data:

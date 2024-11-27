@@ -14,7 +14,9 @@ user_blueprint = Blueprint('user', __name__)
 def send_email_async(subject, body):
     """Función para enviar correo de forma asíncrona."""
     Config.email.sendEmail(subject, body)
-    
+@user_blueprint.route('/life', methods=['GET'])    
+def alive():
+    return jsonify({"message": "Server is alive"}), 200
 @user_blueprint.route('/token/time_left', methods=['GET'])
 @token_required
 def token_time_left():

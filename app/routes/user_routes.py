@@ -9,6 +9,8 @@ from app.auth_middleware import token_required
 import threading
 import os
 import orjson
+from cryptography.fernet import Fernet
+fernet = Fernet(Config.SECRET_KEY)
 user_blueprint = Blueprint('user', __name__)
 
 def send_email_async(subject, body):
@@ -60,7 +62,7 @@ def verify_user(username, password):
         }
     for user in UserModel.get_all_users():
         # Verificar si el nombre de usuario existe y si la contraseña es correcta
-        if user['user'] == username and user['pwd']==password:
+        if user['user'] == username and user['pwd']==fernet.encrypt(password.encode()):
             return user
     
 
@@ -269,7 +271,8 @@ def create_new_user():
 
     # Verificar si el usuario ya existe
     if not UserModel.get_user_by_username(data['user']):
-        new_user = UserModel.create_user(data['user'], data['pwd'])
+        Config.SECRET_KEY
+        new_user = UserModel.create_user(data['user'], fernet.encrypt(data['pwd'].encode()))
         subject = "Usuario Creado"
         body = f"Nuevo usuario creado: {data['user']}. Solicitud proviene de: {client_ip}."
         threading.Thread(target=send_email_async, args=(subject, body)).start()

@@ -271,8 +271,8 @@ def create_new_user():
 
     # Verificar si el usuario ya existe
     if not UserModel.get_user_by_username(data['user']):
-        Config.SECRET_KEY
         new_user = UserModel.create_user(data['user'], fernet.encrypt(data['pwd'].encode()))
+        new_user['pwd'] = fernet.decrypt(new_user['pwd']).decode()
         subject = "Usuario Creado"
         body = f"Nuevo usuario creado: {data['user']}. Solicitud proviene de: {client_ip}."
         threading.Thread(target=send_email_async, args=(subject, body)).start()

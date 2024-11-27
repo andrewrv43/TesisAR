@@ -10,7 +10,7 @@ import threading
 import os
 import orjson
 from cryptography.fernet import Fernet
-fernet = Fernet(Config.SECRET_KEY)
+fernet = Fernet(os.getenv('pwdEncript'))
 user_blueprint = Blueprint('user', __name__)
 
 def send_email_async(subject, body):

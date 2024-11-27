@@ -32,6 +32,7 @@ jobs:
             cd /home/ubuntu/TESIS
             echo "pwdLocal=\"${{ secrets.PASSWORDFORJWT }}\"" > .env
             echo "pwdmail=\"${{ secrets.EMAILPWD }}\"" >> .env
+            echo "pwdEncript=\"${{ secrets.ENCRIPTPWD }}\"" >>> .env
             docker volume create mongo_data || true
             docker compose down
             docker compose up -d

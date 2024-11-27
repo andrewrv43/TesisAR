@@ -765,7 +765,6 @@ def update_passwords():
                 
                 # Crear el objeto actualizado
                 updated_data = {
-                    '_id': str(user['_id']),  # Convertir ObjectId a string para pasarlo al método
                     'user': user['user'],
                     'pwd': encrypted_pwd
                 }

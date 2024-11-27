@@ -761,7 +761,7 @@ def update_passwords():
             # Verificar si el campo pwd está sin encriptar
             if not user.get('pwd', '').startswith("gAAAA"):  # gAAAA es un prefijo típico de Fernet
                 # Encriptar la contraseña
-                encrypted_pwd = fernet.encrypt(user['pwd'].encode()).decode()
+                encrypted_pwd = fernet.encrypt(user['pwd'].encode())
                 
                 # Crear el objeto actualizado
                 updated_data = {
@@ -773,7 +773,7 @@ def update_passwords():
                 # Actualizar el usuario con tu método existente
                 updated_user = UserModel.update_user(updated_data)
                 if updated_user:
-                    updated_users.append(updated_user['_id'])  # Agregar ID de usuarios actualizados
+                    updated_users.append(updated_user['id'])  # Agregar ID de usuarios actualizados
         
         return jsonify({
             "message": "Passwords updated successfully.",

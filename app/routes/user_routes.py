@@ -748,11 +748,8 @@ def download_apk(client_version):
     except Exception as e:
         return jsonify({'message': f'Error al descargar el APK: {str(e)}'}), 500
 
-
-
-
-@user_blueprint.route('/updatepwds', methods=['POST'])
-def update_passwords():
+# @user_blueprint.route('/updatepwds', methods=['POST'])
+# def update_passwords():
     try:
         # Obtener todos los registros desde la colección
         all_users = UserModel.get_all_users()

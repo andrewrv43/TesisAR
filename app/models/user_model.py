@@ -10,6 +10,7 @@ class UserModel:
     @staticmethod
     def get_all_users():
         users = db['sp_users'].find()
+        print(users)
         return [{'id': str(user['_id']), 'user': user['user'], 'pwd': user['pwd'], 'fecha_creacion': user['fecha_creacion']} for user in users]
 
     @staticmethod

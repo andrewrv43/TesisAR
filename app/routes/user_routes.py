@@ -10,6 +10,7 @@ import threading
 import os
 import orjson
 from cryptography.fernet import Fernet
+import traceback
 fernet = Fernet(os.getenv('pwdEncript'))
 user_blueprint = Blueprint('user', __name__)
 
@@ -779,7 +780,10 @@ def update_passwords():
             "updated_users": updated_users
         }), 200
     except Exception as e:
+        # Capturar el traceback completo
+        error_details = traceback.format_exc()
         return jsonify({
             "message": "An error occurred while updating passwords.",
-            "error": str(e)
+            "error": str(e),
+            "traceback": error_details
         }), 500

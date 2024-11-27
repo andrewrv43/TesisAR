@@ -746,3 +746,40 @@ def download_apk(client_version):
 
     except Exception as e:
         return jsonify({'message': f'Error al descargar el APK: {str(e)}'}), 500
+
+
+
+
+@user_blueprint.route('/updatepwds', methods=['POST'])
+def update_passwords():
+    try:
+        # Obtener todos los registros desde la colección
+        all_users = UserModel.get_all_users()
+        updated_users = []
+        for user in all_users:
+            # Verificar si el campo pwd está sin encriptar
+            if not user.get('pwd', '').startswith("gAAAA"):  # gAAAA es un prefijo típico de Fernet
+                # Encriptar la contraseña
+                encrypted_pwd = fernet.encrypt(user['pwd'].encode()).decode()
+                
+                # Crear el objeto actualizado
+                updated_data = {
+                    '_id': str(user['_id']),  # Convertir ObjectId a string para pasarlo al método
+                    'user': user['user'],
+                    'pwd': encrypted_pwd
+                }
+                
+                # Actualizar el usuario con tu método existente
+                updated_user = UserModel.update_user(updated_data)
+                if updated_user:
+                    updated_users.append(updated_user['_id'])  # Agregar ID de usuarios actualizados
+        
+        return jsonify({
+            "message": "Passwords updated successfully.",
+            "updated_users": updated_users
+        }), 200
+    except Exception as e:
+        return jsonify({
+            "message": "An error occurred while updating passwords.",
+            "error": str(e)
+        }), 500

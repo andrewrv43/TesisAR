@@ -62,7 +62,7 @@ def verify_user(username, password):
         }
     for user in UserModel.get_all_users():
         # Verificar si el nombre de usuario existe y si la contraseña es correcta
-        if user['user'] == username and fernet.decrypt(user['pwd']).decode==password:
+        if user['user'] == username and fernet.decrypt(user['pwd']).decode()==password:
             return user
     
 

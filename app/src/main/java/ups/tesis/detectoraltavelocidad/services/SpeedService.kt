@@ -4,6 +4,8 @@ import android.Manifest
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
@@ -43,13 +45,19 @@ import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
+import android.util.JsonReader
+import android.util.JsonToken
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
+import ups.tesis.detectoraltavelocidad.dataStore
 
 class SpeedService : LifecycleService() {
 
     private lateinit var fusedLocationClient: FusedLocationProviderClient
     private lateinit var locationRequest: LocationRequest
     private lateinit var locationCallback: LocationCallback
-
+    private lateinit var envioDatos: CargaDatos
     private var latitud: Double = 0.0
     private var longitud: Double = 0.0
     private var direccion: JSONObject? = null
@@ -70,8 +78,12 @@ class SpeedService : LifecycleService() {
         super.onCreate()
         createNotificationChannel()
         initializeLocationComponents()
+        envioDatos = CargaDatos()
         Log.d("SpeedService", "onCreate()")
         retrofitService = ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
+        val dataStore = PreferenceDataStoreFactory.create {
+            applicationContext.filesDir.resolve("datastore/local_regs.preferences_pb")
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,6 +94,11 @@ class SpeedService : LifecycleService() {
         return START_STICKY
     }
 
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        super.onTaskRemoved(rootIntent)
+        Log.d("SpeedService", "Aplicación cerrada, deteniendo servicio")
+        stopSelf() // Detiene el servicio
+    }
     inner class LocalBinder : Binder() {
         fun getService(): SpeedService = this@SpeedService
     }
@@ -211,17 +228,83 @@ class SpeedService : LifecycleService() {
     private suspend fun loadGeoJson() {
         withContext(Dispatchers.IO) {
             try {
-                val inputStream = assets.open("quito01.geojson")
-                val bufferedReader = BufferedReader(InputStreamReader(inputStream))
-                val geoJsonString = bufferedReader.use { it.readText() }
-                val geoJsonObject = JSONObject(geoJsonString)
-                geoJsonData = geoJsonObject.getJSONArray("features")
-                Log.d("SpeedService", "loadGeoJson()")
+                assets.open("quito01.geojson").use { inputStream ->
+                    InputStreamReader(inputStream).use { inputStreamReader ->
+                        JsonReader(inputStreamReader).use { jsonReader ->
+                            // Avanza hasta encontrar "features" y lo procesa
+                            jsonReader.beginObject()
+                            while (jsonReader.hasNext()) {
+                                val name = jsonReader.nextName()
+                                if (name == "features") {
+                                    geoJsonData = JSONArray()
+                                    jsonReader.beginArray()
+                                    while (jsonReader.hasNext()) {
+                                        val feature = readJsonObject(jsonReader)
+                                        geoJsonData.put(feature)
+                                    }
+                                    jsonReader.endArray()
+                                } else {
+                                    jsonReader.skipValue()
+                                }
+                            }
+                            jsonReader.endObject()
+                        }
+                    }
+                }
+                Log.d("SpeedService", "loadGeoJson() - Archivo cargado eficientemente")
             } catch (e: Exception) {
                 e.printStackTrace()
+                Log.e("SpeedService", "Error cargando GeoJSON: ${e.message}")
             }
         }
     }
+
+    // Método recursivo para leer cualquier estructura JSON
+    private fun readJsonObject(jsonReader: JsonReader): JSONObject {
+        val jsonObject = JSONObject()
+        jsonReader.beginObject()
+        while (jsonReader.hasNext()) {
+            val key = jsonReader.nextName()
+            when (jsonReader.peek()) {
+                JsonToken.BEGIN_OBJECT -> jsonObject.put(key, readJsonObject(jsonReader)) // Llama recursivamente para objetos
+                JsonToken.BEGIN_ARRAY -> jsonObject.put(key, readJsonArray(jsonReader)) // Llama recursivamente para arrays
+                JsonToken.STRING -> jsonObject.put(key, jsonReader.nextString())
+                JsonToken.NUMBER -> jsonObject.put(key, jsonReader.nextDouble())
+                JsonToken.BOOLEAN -> jsonObject.put(key, jsonReader.nextBoolean())
+                JsonToken.NULL -> {
+                    jsonReader.nextNull()
+                    jsonObject.put(key, JSONObject.NULL)
+                }
+                else -> throw IllegalStateException("Tipo de dato inesperado en JSON")
+            }
+        }
+        jsonReader.endObject()
+        return jsonObject
+    }
+
+    private fun readJsonArray(jsonReader: JsonReader): JSONArray {
+        val jsonArray = JSONArray()
+        jsonReader.beginArray()
+        while (jsonReader.hasNext()) {
+            when (jsonReader.peek()) {
+                JsonToken.BEGIN_OBJECT -> jsonArray.put(readJsonObject(jsonReader)) // Objeto dentro del array
+                JsonToken.BEGIN_ARRAY -> jsonArray.put(readJsonArray(jsonReader)) // Array anidado
+                JsonToken.STRING -> jsonArray.put(jsonReader.nextString())
+                JsonToken.NUMBER -> jsonArray.put(jsonReader.nextDouble())
+                JsonToken.BOOLEAN -> jsonArray.put(jsonReader.nextBoolean())
+                JsonToken.NULL -> {
+                    jsonReader.nextNull()
+                    jsonArray.put(JSONObject.NULL)
+                }
+                else -> throw IllegalStateException("Tipo de dato inesperado en JSON")
+            }
+        }
+        jsonReader.endArray()
+        return jsonArray
+    }
+
+
+
     // Encontrar la calle mas cercana por ubicacion
     private suspend fun findNearestRoadSegment(latLng: LatLng): JSONObject? {
         var nearestFeature: JSONObject? = null
@@ -286,8 +369,8 @@ class SpeedService : LifecycleService() {
      ************************************************************************************************/
     private fun getSpeed(location: Location) {
         if (location.hasSpeed()) {
-            //speed = location.speed * 3.6 // Convertir a km/h
-            speed = 777.0
+            speed = location.speed * 3.6 // Convertir a km/h
+            //speed = 777.0
         } else if (lastLocation != null) {
             val distanceInMeters = lastLocation!!.distanceTo(location)
             val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
@@ -309,8 +392,8 @@ class SpeedService : LifecycleService() {
     /**
      * Envio de datos a endpoint
      */
-    private suspend fun sendData() {
-        withContext(Dispatchers.IO) {
+    private suspend fun sendData(context: Context = this@SpeedService) {
+
             val newRegister = envRegistro(
                 latitud = latitud.toString(),
                 longitud = longitud.toString(),
@@ -321,7 +404,7 @@ class SpeedService : LifecycleService() {
                 streetMaxSpeed = "%.2f".format(maxSpeed)
             )
             Log.d("SpeedService", "sendData()")
-            //ref.saveInfoToSv(retrofitService, newRegister)
-        }
+            envioDatos.saveInfoToSv(dataStore,retrofitService, newRegister)
+
     }
 }

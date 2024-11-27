@@ -7,6 +7,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
+import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.location.Location
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.animation.AnimationUtils
@@ -42,6 +44,9 @@ import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.permissions.LocationPermissions
 import ups.tesis.detectoraltavelocidad.services.SpeedService
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "local_regs")
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener,
     LocationPermissions.PermissionCallback {
@@ -61,6 +66,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var zValueText: TextView
     private lateinit var speedText: TextView
 
+    private lateinit var data: CargaDatos
+    private var lastLocation: Location? = null
     private var speed: Double = 0.0
     private var maxSpeed: Double = 0.0
 
@@ -136,6 +143,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         glowContainer.startAnimation(pulseAnimation)
 
         retrofitService=ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
+        data= CargaDatos()
+        if(ref.hayConexionAInternet(this)){
+            actualizacionApp()
+        }
     }
 
     override fun onMapReady(googleMap: GoogleMap) {
@@ -170,6 +181,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onDestroy()
         // Destruir el BroadcastReceiver
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
+        stopService(Intent(this, SpeedService::class.java))
+        Log.d("MapsActivity", "Actividad destruida, servicio detenido")
     }
 
     /**
@@ -434,7 +447,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private val runnable = object : Runnable {
         override fun run() {
             lifecycleScope.launch {
-                ref.loadLocalRegsSv()
+                data.loadLocalRegsSv(this@MapsActivity.dataStore,retrofitService)
             }
             // Programar la siguiente ejecución en 10 minutos
             handler.postDelayed(this, interval)
@@ -469,5 +482,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private fun stopSpeedService() {
         val serviceIntent = Intent(this, SpeedService::class.java)
         stopService(serviceIntent)
+    }
+
+    private fun actualizacionApp(){
+        lifecycleScope.launch {
+            ref.actualizacion(retrofitService)
+        }
     }
 }

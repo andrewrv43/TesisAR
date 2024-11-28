@@ -209,6 +209,9 @@ def get_username(username):
         return jsonify({'error': 'Usuario no encontrado'}), 404
 
 
+#################################
+#Rutas para ELIMINAR un usuario #
+#################################
 
 
 # Ruta para crear un nuevo usuario
@@ -718,7 +721,7 @@ def download_apk(client_version):
 
     try:
         # Versión actual del APK en el servidor o version ESTABLE
-        server_version = "0.3"
+        server_version = "0.4"
 
         # Compara las versiones
         if client_version == server_version:

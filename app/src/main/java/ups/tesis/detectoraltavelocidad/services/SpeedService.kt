@@ -1,7 +1,6 @@
 package ups.tesis.detectoraltavelocidad.services
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -18,7 +17,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.MutableLiveData
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
@@ -37,7 +35,6 @@ import ups.tesis.detectoraltavelocidad.R
 import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
-import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -49,7 +46,6 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import android.util.JsonReader
 import android.util.JsonToken
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
 import ups.tesis.detectoraltavelocidad.dataStore
@@ -67,12 +63,14 @@ class SpeedService : LifecycleService() {
     private var lastLocation: Location? = null
     private var speed: Double = 0.0
     private var maxSpeed: Double = 0.0
+
     companion object {
         private const val CHANNEL_ID = "location_service_channel"
         private const val NOTIFICATION_ID = 1
     }
 
     val speedLiveData = MutableLiveData<Double>()
+    val maxSpeedLiveData = MutableLiveData<Double>()
 
     override fun onCreate() {
         super.onCreate()
@@ -159,6 +157,7 @@ class SpeedService : LifecycleService() {
                         getCurrentLocation(currentLatLng)
                         getSpeed(location)
                         speedLiveData.postValue(speed)
+                        maxSpeedLiveData.postValue(maxSpeed)
                         Log.d("SpeedService", "Recolectando velocidad y ubicacion en segundo plano")
 
                         val currentTime = System.currentTimeMillis()
@@ -224,8 +223,6 @@ class SpeedService : LifecycleService() {
 
     private lateinit var geoJsonData: JSONArray
     // Cargar mapa de calles de Quito
-
-
     private suspend fun loadGeoJson() {
         withContext(Dispatchers.IO) {
             try {
@@ -394,7 +391,6 @@ class SpeedService : LifecycleService() {
      * Envio de datos a endpoint
      */
     private suspend fun sendData(context: Context = this@SpeedService) {
-
             val newRegister = envRegistro(
                 latitud = latitud.toString(),
                 longitud = longitud.toString(),

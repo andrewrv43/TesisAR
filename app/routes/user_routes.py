@@ -721,7 +721,7 @@ def download_apk(client_version):
 
     try:
         # Versión actual del APK en el servidor o version ESTABLE
-        server_version = "0.4"
+        server_version = "0.41"
 
         # Compara las versiones
         if client_version == server_version:

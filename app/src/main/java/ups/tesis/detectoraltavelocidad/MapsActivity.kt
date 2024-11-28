@@ -7,7 +7,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.ServiceConnection
-import android.content.pm.PackageManager
 import android.content.res.Resources
 import android.location.Location
 import android.os.Bundle
@@ -17,7 +16,6 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.net.Uri
 import android.os.Build
 import android.util.Log
 import android.view.animation.AnimationUtils
@@ -28,6 +26,7 @@ import android.os.IBinder
 import android.os.Looper
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
+import androidx.datastore.core.DataStore
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Observer
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
@@ -46,6 +45,8 @@ import ups.tesis.detectoraltavelocidad.permissions.LocationPermissions
 import ups.tesis.detectoraltavelocidad.services.SpeedService
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
+import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
+
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "local_regs")
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener,
@@ -155,14 +156,15 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         map.setOnMyLocationClickListener(this)
         /*map.setOnMapClickListener(this)*/
         locationPermissions.checkAndRequestLocationPermissions()
-        startSpeedService()
 
         // Aplicar el estilo del mapa
         applyMapStyle()
+        //map.moveCamera(CameraUpdateFactory.newLatLngZoom(userLatLng, 15f))
     }
 
     override fun onResume() {
         super.onResume()
+        locationPermissions.checkAndRequestLocationPermissions()
         // Registrar el listener del sensor
         accelerometer?.also { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
@@ -181,8 +183,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         super.onDestroy()
         // Destruir el BroadcastReceiver
         LocalBroadcastManager.getInstance(this).unregisterReceiver(mapStyleReceiver)
-        stopService(Intent(this, SpeedService::class.java))
-        Log.d("MapsActivity", "Actividad destruida, servicio detenido")
+        stopSpeedService()
     }
 
     /**
@@ -242,7 +243,10 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         map.isMyLocationEnabled = true
     }
     override fun onPermissionGranted() {
-        if (::map.isInitialized) { enableLocation() }
+        if (::map.isInitialized) {
+            enableLocation()
+            startSpeedService() // Iniciar servicio
+        }
     }
     /**
      *  Maneja la respuesta de los permisos
@@ -364,16 +368,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      */
     private fun updateGlow(speed: Double, limit: Double) {
         when {
-            limit == 0.0 -> {
-                glowContainer.startAnimation(null)
-            }
-            // Si la velocidad es mayor a +10 km/h del límite, rojo
-            speed > limit + 10 -> {
-                glowContainer.setBackgroundResource(R.drawable.border_glow_red)
-            }
-            // Si la velocidad es mayor al límite pero dentro de 10 km/h, amarillo
+            // Si la velocidad es mayor al límite, rojo
             speed > limit -> {
-                glowContainer.setBackgroundResource(R.drawable.border_glow_yellow)
+                glowContainer.setBackgroundResource(R.drawable.border_glow_red)
             }
             // Si la velocidad está dentro del límite o por debajo, verde
             else -> {
@@ -480,8 +477,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         }
     }
     private fun stopSpeedService() {
-        val serviceIntent = Intent(this, SpeedService::class.java)
-        stopService(serviceIntent)
+        stopService(Intent(this, SpeedService::class.java))
+        Log.d("MapsActivity", "Actividad destruida, servicio detenido")
     }
 
     private fun actualizacionApp(){

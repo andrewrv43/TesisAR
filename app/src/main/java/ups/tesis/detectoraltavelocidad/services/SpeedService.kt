@@ -35,7 +35,6 @@ import ups.tesis.detectoraltavelocidad.R
 import ups.tesis.detectoraltavelocidad.conexionec2.Referencias
 import ups.tesis.detectoraltavelocidad.conexionec2.RetrofitService
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
-import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -47,7 +46,6 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 import android.util.JsonReader
 import android.util.JsonToken
-import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
 import ups.tesis.detectoraltavelocidad.dataStore
@@ -393,7 +391,6 @@ class SpeedService : LifecycleService() {
      * Envio de datos a endpoint
      */
     private suspend fun sendData(context: Context = this@SpeedService) {
-
             val newRegister = envRegistro(
                 latitud = latitud.toString(),
                 longitud = longitud.toString(),

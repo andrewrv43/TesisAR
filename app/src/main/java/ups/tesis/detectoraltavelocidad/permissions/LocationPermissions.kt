@@ -2,14 +2,17 @@ package ups.tesis.detectoraltavelocidad.permissions
 
 import android.Manifest
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
+import android.view.LayoutInflater
 import android.widget.Toast
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import ups.tesis.detectoraltavelocidad.R
 
 class LocationPermissions (private val activity: Activity, private val permissionCallback: PermissionCallback) {
     interface PermissionCallback {
@@ -98,22 +101,42 @@ class LocationPermissions (private val activity: Activity, private val permissio
         when {
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.R -> {
                 // Para Android 11 y superiores, redirige al usuario a la configuración de la aplicación
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = Uri.fromParts("package", activity.packageName, null)
-                activity.startActivity(intent)
+                showBackgroundLocationPermissionDialog()
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
                 // Para Android 10, pide el permiso de ACCESS_BACKGROUND_LOCATION
-                ActivityCompat.requestPermissions(
+                showBackgroundLocationPermissionDialog()
+                /*ActivityCompat.requestPermissions(
                     activity,
                     arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
                     REQUEST_BACKGROUND_LOCATION_PERMISSION
-                )
+                )*/
             }
             else -> {
                 // No hay necesidad de solicitar el permiso de ACCESS_BACKGROUND_LOCATION en versiones anteriores a Android 10
                 permissionCallback.onPermissionGranted()
             }
         }
+    }
+
+    /**
+     *  Muestra un diálogo al solicitar los permisos de background location
+     */
+    private fun showBackgroundLocationPermissionDialog() {
+        val dialogView = LayoutInflater.from(activity).inflate(R.layout.dialog_location_permission, null)
+        val builder = AlertDialog.Builder(activity)
+            .setView(dialogView)
+            .setPositiveButton("ACEPTAR") { dialog, which ->
+                // Abrir configuración de la aplicación
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                intent.data = Uri.fromParts("package", activity.packageName, null)
+                activity.startActivity(intent)
+            }
+            .setNegativeButton("CANCELAR") { dialog, which ->
+                // Opcional: manejar la cancelación si es necesario
+                dialog.dismiss()
+            }
+        val dialog = builder.create()
+        dialog.show()
     }
 }

@@ -228,7 +228,7 @@ class Referencias(val context: Context){
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Verificando si existe una nueva versión...", Toast.LENGTH_LONG).show()
             }
-            val clientVersion = "0.3"  // Versión de la aplicación
+            val clientVersion = "0.4"  // Versión de la aplicación
             val response = retrofitService.downloadApk(clientVersion)
             when (response.code()) {
                 200 -> {
@@ -346,7 +346,7 @@ class CargaDatos(){
                 Log.e("saveInfoToSv", "Datos locales no cargados debido a un error inesperado: ${e.message}")
             } else {
                 addNewLocalRegister(context,newRegister)
-                Log.e("saveInfoToSv", "No existe conexión, los datos serán guardados de manera local: ${e.message}")
+                Log.e("saveInfoToSv", "Exepcion Existente: ${e}")
             }
             return 0
         }

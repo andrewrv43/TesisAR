@@ -96,7 +96,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             speedService?.let { service ->
                 service.speedLiveData.observe(this@MapsActivity, Observer { speed ->
                     // Actualiza la UI con la velocidad
-                    speedText.text = "Velocidad: %.2f km/h".format(speed)
+                    speedText.text = "Velocidad: %.2f km/h".format(Locale.US,speed)
                     updateGlow(speed, maxSpeed)
                     Log.d("SpeedService", "MapsActivity Recibe data $speed serviceConnection")
                 })

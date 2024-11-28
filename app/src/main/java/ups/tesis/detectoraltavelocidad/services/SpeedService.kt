@@ -397,8 +397,8 @@ class SpeedService : LifecycleService() {
                 direccion = direccion,
                 fecha = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).format(Date())
                     .toString(),
-                speed = "%.2f".format(speed),
-                streetMaxSpeed = "%.2f".format(maxSpeed)
+                speed = "%.2f".format(Locale.US,speed),
+                streetMaxSpeed = "%.2f".format(Locale.US,maxSpeed)
             )
             Log.d("SpeedService", "sendData()")
             envioDatos.saveInfoToSv(dataStore,retrofitService, newRegister)

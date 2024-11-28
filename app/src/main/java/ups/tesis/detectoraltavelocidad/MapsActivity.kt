@@ -46,6 +46,7 @@ import ups.tesis.detectoraltavelocidad.services.SpeedService
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
 import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
+import java.util.Locale
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "local_regs")
 
@@ -164,7 +165,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
     override fun onResume() {
         super.onResume()
-        locationPermissions.checkAndRequestLocationPermissions()
         // Registrar el listener del sensor
         accelerometer?.also { sensor ->
             sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)

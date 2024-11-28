@@ -105,12 +105,11 @@ class LocationPermissions (private val activity: Activity, private val permissio
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
                 // Para Android 10, pide el permiso de ACCESS_BACKGROUND_LOCATION
-                showBackgroundLocationPermissionDialog()
-                /*ActivityCompat.requestPermissions(
+                ActivityCompat.requestPermissions(
                     activity,
                     arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
                     REQUEST_BACKGROUND_LOCATION_PERMISSION
-                )*/
+                )
             }
             else -> {
                 // No hay necesidad de solicitar el permiso de ACCESS_BACKGROUND_LOCATION en versiones anteriores a Android 10
@@ -128,9 +127,12 @@ class LocationPermissions (private val activity: Activity, private val permissio
             .setView(dialogView)
             .setPositiveButton("ACEPTAR") { dialog, which ->
                 // Abrir configuración de la aplicación
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                intent.data = Uri.fromParts("package", activity.packageName, null)
-                activity.startActivity(intent)
+                ActivityCompat.requestPermissions(
+                    activity,
+                    arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),
+                    REQUEST_BACKGROUND_LOCATION_PERMISSION
+                )
+                dialog.dismiss()
             }
             .setNegativeButton("CANCELAR") { dialog, which ->
                 // Opcional: manejar la cancelación si es necesario

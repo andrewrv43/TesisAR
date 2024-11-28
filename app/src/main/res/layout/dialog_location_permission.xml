@@ -25,7 +25,7 @@ android:layout_height="wrap_content">
         android:layout_width="match_parent"
         android:layout_height="189dp"
         android:gravity="center"
-        android:text="Puedes regresar de configuración después de habilitar los permisos."
+        android:text="Puedes regresar de configuración después de habilitar los permisos.\n Una vez habilitados puedes dar click en Cancelar"
         android:textSize="20sp"
         android:textColor="@android:color/black" />
 

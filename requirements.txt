@@ -6,3 +6,4 @@ PyJWT
 mail
 orjson
 cryptography
+pytz

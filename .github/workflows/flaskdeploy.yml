@@ -33,6 +33,8 @@ jobs:
             echo "pwdLocal=\"${{ secrets.PASSWORDFORJWT }}\"" > .env
             echo "pwdmail=\"${{ secrets.EMAILPWD }}\"" >> .env
             echo "pwdEncript=\"${{ secrets.ENCRIPTPWD }}\"" >> .env
+            echo "URLEC2=\"${{ secrets.CONNECTURL }}\"" >> .env
+            echo "PEM=\"${{ secrets.CONNEC2PEM }}\"" >> .env
             docker volume create mongo_data || true
             docker compose down
             docker compose up -d

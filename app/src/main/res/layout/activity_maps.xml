@@ -24,7 +24,6 @@
         android:layout_height="match_parent"
         android:layout_gravity="center"
         />
-    <!--android:background="@drawable/border_glow_green"-->
 
     <LinearLayout
         android:id="@+id/text_layout"
@@ -35,31 +34,24 @@
         app:layout_constraintTop_toTopOf="parent">
 
         <TextView
-            android:id="@+id/xValue"
+            android:id="@+id/streetValue"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="X: 0.0"
-            android:textSize="24sp" />
-
-        <TextView
-            android:id="@+id/yValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Y: 0.0"
-            android:textSize="24sp" />
-
-        <TextView
-            android:id="@+id/zValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Z: 0.0"
+            android:text="Calle: "
             android:textSize="24sp" />
 
         <TextView
             android:id="@+id/speedValue"
-            android:layout_width="wrap_content"
+            android:layout_width="392dp"
             android:layout_height="wrap_content"
-            android:text="Speed: 0 km/h"
+            android:text="Velocidad: 0 km/h"
+            android:textSize="24sp" />
+
+        <TextView
+            android:id="@+id/maxSpeedValue"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Limite: 0 km/h"
             android:textSize="24sp" />
     </LinearLayout>
 

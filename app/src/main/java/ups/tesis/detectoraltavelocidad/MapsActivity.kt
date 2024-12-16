@@ -50,8 +50,7 @@ import java.util.Locale
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "local_regs")
 
-class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ SensorEventListener,
-    LocationPermissions.PermissionCallback {
+class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLocationClickListener, /*GoogleMap.OnMapClickListener,*/ LocationPermissions.PermissionCallback {
     private val handler = Handler(Looper.getMainLooper())
     private val interval: Long = 60000
     private lateinit var map: GoogleMap
@@ -60,13 +59,9 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var profileBtn: ImageView
     private lateinit var profileBtn2: Button
 
-    /* Variables para sensor de velocidad */
-    private lateinit var sensorManager: SensorManager
-    private var accelerometer: Sensor? = null
-    private lateinit var xValueText: TextView
-    private lateinit var yValueText: TextView
-    private lateinit var zValueText: TextView
+    private lateinit var streetText: TextView
     private lateinit var speedText: TextView
+    private lateinit var maxSpeedText: TextView
 
     private lateinit var data: CargaDatos
     private var lastLocation: Location? = null
@@ -99,10 +94,14 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
                     // Actualiza la UI con la velocidad
                     speedText.text = "Velocidad: %.2f km/h".format(Locale.US,speed)
                     updateGlow(speed, maxSpeed)
-                    Log.d("SpeedService", "MapsActivity Recibe data $speed serviceConnection")
                 })
                 service.maxSpeedLiveData.observe(this@MapsActivity, Observer { maxSpeed ->
                     this@MapsActivity.maxSpeed = maxSpeed
+                    maxSpeedText.text = "Limite: %.2f km/h".format(Locale.US,maxSpeed)
+                })
+                service.streetNameLiveData.observe(this@MapsActivity, Observer { streetName ->
+                    streetText.text = "Calle: $streetName"
+                    Log.d("SpeedService", "MapsActivity recibe nombre de calle: $streetName")
                 })
             }
         }
@@ -138,7 +137,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
         createMapFragment()
         registerBroadcastReceiver()
-        createAcelerometerSensor()
+        createLayoutVariables()
 
         glowContainer = findViewById(R.id.glowContainer)
         val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
@@ -165,17 +164,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
 
     override fun onResume() {
         super.onResume()
-        // Registrar el listener del sensor
-        accelerometer?.also { sensor ->
-            sensorManager.registerListener(this, sensor, SensorManager.SENSOR_DELAY_NORMAL)
-        }
         handler.postDelayed(runnable, interval)
     }
 
     override fun onPause() {
         super.onPause()
-        // Detener el sensor cuando la actividad no esté visible
-        sensorManager.unregisterListener(this)
         handler.removeCallbacks(runnable)
     }
 
@@ -390,56 +383,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     /**
      * Crear sensor de acelerometro y inicializar los TextViews
      */
-    private fun createAcelerometerSensor() {
+    private fun createLayoutVariables() {
         // Inicializar los TextViews para mostrar los valores
-        xValueText = findViewById(R.id.xValue)
-        yValueText = findViewById(R.id.yValue)
-        zValueText = findViewById(R.id.zValue)
+        streetText = findViewById(R.id.streetValue)
         speedText = findViewById(R.id.speedValue)
-
-        // Inicializar el SensorManager y el acelerómetro
-        sensorManager = getSystemService(SENSOR_SERVICE) as SensorManager
-        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        maxSpeedText = findViewById(R.id.maxSpeedValue)
     }
-
-    /**
-     * Actualizar los valores del acelerómetro
-     */
-    // Variables para almacenar la velocidad en cada eje
-    private var ax: Double = 0.0
-    private var ay: Double = 0.0
-    private var az: Double = 0.0
-
-    // Tiempo inicial
-    private var lastTimestamp = 0L
-    override fun onSensorChanged(event: SensorEvent) {
-        /*if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
-            ax = event.values[0].toDouble()
-            ay = event.values[1].toDouble()
-            az = event.values[2].toDouble()
-
-            // Calcular la magnitud de la aceleración con valores (X,Z)
-            val accelerationMagnitude = sqrt((ax * ax) + (az * az))
-
-            // Calcular el tiempo transcurrido
-            val currentTimestamp = System.currentTimeMillis()
-            val dt = (currentTimestamp - lastTimestamp) / 1000.0
-            lastTimestamp = currentTimestamp
-
-            // Convertir a km/h
-            val speedKmh = accelerationMagnitude * dt
-
-            // Mostrar la velocidad
-            speedText.text = "Speed: %.2f km/h".format(speedKmh)
-
-            // Mostrar los valores del acelerómetro en los TextViews
-            xValueText.text = "X: $ax"
-            yValueText.text = "Y: $ay"
-            zValueText.text = "Z: $az"
-        }*/
-    }
-
-    override fun onAccuracyChanged(p0: Sensor?, p1: Int) { /* No es necesario implementar este método */ }
 
     private val runnable = object : Runnable {
         override fun run() {

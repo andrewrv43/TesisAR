@@ -92,12 +92,12 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
             speedService?.let { service ->
                 service.speedLiveData.observe(this@MapsActivity, Observer { speed ->
                     // Actualiza la UI con la velocidad
-                    speedText.text = "Velocidad: %.2f km/h".format(Locale.US,speed)
+                    speedText.text = "%.1f".format(Locale.US,speed)
                     updateGlow(speed, maxSpeed)
                 })
                 service.maxSpeedLiveData.observe(this@MapsActivity, Observer { maxSpeed ->
                     this@MapsActivity.maxSpeed = maxSpeed
-                    maxSpeedText.text = "Limite: %.2f km/h".format(Locale.US,maxSpeed)
+                    maxSpeedText.text = "%.0f".format(Locale.US,maxSpeed)
                 })
                 service.streetNameLiveData.observe(this@MapsActivity, Observer { streetName ->
                     streetText.text = "Calle: $streetName"

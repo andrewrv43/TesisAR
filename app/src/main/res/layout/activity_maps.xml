@@ -40,19 +40,6 @@
             android:text="Calle: "
             android:textSize="24sp" />
 
-        <TextView
-            android:id="@+id/speedValue"
-            android:layout_width="392dp"
-            android:layout_height="wrap_content"
-            android:text="Velocidad: 0 km/h"
-            android:textSize="24sp" />
-
-        <TextView
-            android:id="@+id/maxSpeedValue"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="Limite: 0 km/h"
-            android:textSize="24sp" />
     </LinearLayout>
 
     <LinearLayout
@@ -107,9 +94,52 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:srcCompat="@drawable/right_arrow" />
 
-    <!--<androidx.viewpager2.widget.ViewPager2
-        android:id="@+id/viewPager"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />-->
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_marginBottom="80dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+        <ImageView
+            android:id="@+id/maxSpeedImage"
+            android:layout_width="75dp"
+            android:layout_height="75dp"
+            android:contentDescription="Limite de velocidad"
+            app:srcCompat="@drawable/speed_limit" />
+        <TextView
+            android:id="@+id/maxSpeedValue"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="12dp"
+            android:layout_marginTop="7dp"
+            android:gravity="center"
+            android:textSize="45sp"
+            android:text="00" />
+    </FrameLayout>
+
+    <FrameLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="10dp"
+        android:layout_marginBottom="75dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+        <ImageView
+            android:id="@+id/speedImage"
+            android:layout_width="75dp"
+            android:layout_height="75dp"
+            android:contentDescription="Velocidad"
+            app:srcCompat="@drawable/speedometer" />
+        <TextView
+            android:id="@+id/speedValue"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginHorizontal="13dp"
+            android:layout_marginTop="50dp"
+            android:gravity="center"
+            android:textSize="35sp"
+            android:text="0.0" />
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

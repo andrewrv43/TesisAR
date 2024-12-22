@@ -47,8 +47,11 @@ import kotlin.math.sqrt
 import android.util.JsonReader
 import android.util.JsonToken
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.locationtech.jts.geom.*
 import org.locationtech.jts.index.strtree.STRtree
+import org.locationtech.jts.operation.distance.DistanceOp
 import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
 import ups.tesis.detectoraltavelocidad.dataStore
 import kotlin.math.abs
@@ -219,11 +222,11 @@ class SpeedService : LifecycleService() {
     /************************************************************************************************
      * Obtener velocidad actual por medio de GPS y aplicar filtros para suavizado
      ************************************************************************************************/
-    private val speedKalmanFilter = KalmanFilter(0.001)
+    private val speedKalmanFilter = KalmanFilter(0.1)
     private val speedReadings = mutableListOf<Double>()
-    private val SPEED_READINGS_MAX_SIZE = 5
+    private val SPEED_READINGS_MAX_SIZE = 2
     private var lastSpeed = 0.0
-    private val MIN_ACCURACY = 10f // metros
+    private val MIN_ACCURACY = 5 // metros
     private val MAX_SPEED = 200.0 // km/h
     private val MAX_SPEED_INCREMENT = 10.0 // km/h por segundo
     private val MIN_SPEED_THRESHOLD = 1.0 // km/h
@@ -247,6 +250,8 @@ class SpeedService : LifecycleService() {
             // Validar velocidad máxima
             val validatedSpeed = currentSpeed.coerceIn(0.0, MAX_SPEED)
 
+            /*
+
             // Evitar picos de velocidad
             val speedDelta = validatedSpeed - lastSpeed
             val maxAllowedSpeedDelta = MAX_SPEED_INCREMENT * timeDelta
@@ -266,9 +271,18 @@ class SpeedService : LifecycleService() {
             // Suavizar con media móvil
             val smoothedSpeed = speedReadings.average()
 
+            */
+
             // Actualizar con filtro de Kalman
-            speed = speedKalmanFilter.update(smoothedSpeed)
+            //speed = speedKalmanFilter.update(smoothedSpeed)
+            speed = speedKalmanFilter.update(validatedSpeed)
             lastSpeed = speed
+
+            val distanceInMeters = lastLocation?.distanceTo(location) ?: 0f
+            if (distanceInMeters < 1.0 && speed < 1.0) {
+                speed = speedKalmanFilter.update(0.0)
+                lastSpeed = speed
+            }
         } else {
             // La precisión es baja, no confiar en esta lectura
             speed = speedKalmanFilter.update(0.0)
@@ -281,11 +295,16 @@ class SpeedService : LifecycleService() {
      * Cargar GeoJson como indice espacial
      ************************************************************************************************/
     private var isGeoJsonLoaded = false
+    private val geoJsonMutex = Mutex()
     private lateinit var spatialIndex: STRtree
     private val geometryFactory = GeometryFactory()
 
     private suspend fun loadGeoJson() {
-        withContext(Dispatchers.IO) {
+        geoJsonMutex.withLock {
+            if (isGeoJsonLoaded) {
+                Log.d("SpeedService", "GeoJSON ya está cargado o en proceso de carga")
+                return
+            }
             try {
                 assets.open("quito01.geojson").use { inputStream ->
                     InputStreamReader(inputStream).use { inputStreamReader ->
@@ -302,9 +321,13 @@ class SpeedService : LifecycleService() {
                                     jsonReader.beginArray()
                                     while (jsonReader.hasNext()) {
                                         val feature = readJsonObject(jsonReader)
-                                        val geometry = parseGeometry(feature.getJSONObject("geometry"))
+                                        val geometry =
+                                            parseGeometry(feature.getJSONObject("geometry"))
                                         if (geometry != null && !geometry.isEmpty) {
-                                            spatialIndex.insert(geometry.envelopeInternal, Pair(feature, geometry))
+                                            spatialIndex.insert(
+                                                geometry.envelopeInternal,
+                                                Pair(feature, geometry)
+                                            )
                                         }
                                     }
                                     jsonReader.endArray()
@@ -317,7 +340,9 @@ class SpeedService : LifecycleService() {
                             if (foundFeatures) {
                                 spatialIndex.build()
                                 isGeoJsonLoaded = true
-                                Log.d("SpeedService", "loadGeoJson() - Archivo cargado e índice espacial construido")
+                                Log.d(
+                                    "SpeedService", "loadGeoJson() - Archivo cargado e indice espacial construido"
+                                )
                             }
                         }
                     }
@@ -384,66 +409,76 @@ class SpeedService : LifecycleService() {
             else -> throw IllegalArgumentException("Tipo de geometría no soportado: $type")
         }
     }
-    /**
-     * Calcula el heading (dirección) de un segmento de carretera
-     */
-    private fun calculateHeading(segment: Geometry): Double {
-        if (segment is LineString && segment.numPoints >= 2) {
-            val coord1 = segment.getCoordinateN(0)
-            val coord2 = segment.getCoordinateN(1)
-            return Math.toDegrees(atan2(coord2.y - coord1.y, coord2.x - coord1.x))
-        }
-        return 0.0
-    }
 
-    /**
-     * Calcula la diferencia angular entre dos headings (dirección)
-     */
-    private fun headingDifference(h1: Double, h2: Double): Double {
-        val diff = abs(h1 - h2) % 360
-        return if (diff > 180) 360 - diff else diff
-    }
+    private suspend fun findNearestRoadSegment(userLocation: LatLng, userHeading: Double): JSONObject? {
+        // Convertir la ubicación del usuario a un punto de JTS
+        val userPoint: Point = geometryFactory.createPoint(Coordinate(userLocation.longitude, userLocation.latitude))
 
-    /**
-     * Busca el segmento de carretera más cercano a la ubicación actual
-     */
-    private suspend fun findNearestRoadSegment(latLng: LatLng, userHeading: Double): JSONObject? {
-        val userLocation = Coordinate(latLng.longitude, latLng.latitude)
-        val searchEnvelope = Envelope(userLocation)
-        val searchRadius = 0.001 // Ajustar valor (en grados)
+        // Definir un radio de búsqueda en metros (por ejemplo, 100 metros)
+        val searchRadiusMeters = 20.0
 
-        // Expandir el área de búsqueda
-        searchEnvelope.expandBy(searchRadius)
+        // Convertir el radio de búsqueda de metros a grados aproximadamente
+        // Nota: 1 grado de latitud ≈ 111 km, 1 grado de longitud varía según la latitud
+        val latDegree = searchRadiusMeters / 111000.0
+        val lonDegree = searchRadiusMeters / (111000.0 * cos(Math.toRadians(userLocation.latitude)))
 
-        val nearbyRoads = spatialIndex.query(searchEnvelope)
+        // Crear un envelope (rectángulo) alrededor del punto del usuario
+        val searchEnvelope = userPoint.buffer(lonDegree).envelopeInternal
 
-        var bestFeature: JSONObject? = null
-        var lowestScore = Double.MAX_VALUE
+        // Consultar el índice espacial para obtener candidatos dentro del envelope
+        val candidates = spatialIndex.query(searchEnvelope)
+
+        var nearestFeature: JSONObject? = null
+        var minDistanceMeters = Double.MAX_VALUE
 
         withContext(Dispatchers.IO) {
-            for (candidate in nearbyRoads) {
+            for (candidate in candidates) {
                 val (feature, geometry) = candidate as Pair<JSONObject, Geometry>
 
-                // Proyectar la ubicación del usuario sobre el segmento de carretera
-                val distance = geometry.distance(geometryFactory.createPoint(userLocation))
-                val roadHeading = calculateHeading(geometry)
-                val headingDiff = headingDifference(userHeading, roadHeading)
+                // Calcular la distancia en metros usando la fórmula Haversine
+                val distance = distancePointToGeometry(userLocation, geometry)
 
-                // Función de puntuación que considera distancia y diferencia de rumbo
-                val score = distance * 0.7 + headingDiff * 0.3 // Ajusta los pesos según sea necesario
-
-                if (score < lowestScore) {
-                    lowestScore = score
-                    bestFeature = feature
+                if (distance < minDistanceMeters) {
+                    minDistanceMeters = distance
+                    nearestFeature = feature
                 }
             }
         }
 
-        // Umbral de puntuación (ajusta según sea necesario)
-        val scoreThreshold = 2
-        Log.d("SpeedService", "lowestScore: ${lowestScore}")
-        return if (lowestScore <= scoreThreshold) bestFeature else null
+        // Opcional: si no se encuentra ningún candidato, puedes ampliar el radio de búsqueda
+        //if (nearestFeature == null) {
+            // Implementar lógica para ampliar el radio de búsqueda si es necesario
+        //}
+        return nearestFeature
     }
+    private fun distancePointToGeometry(point: LatLng, geometry: Geometry): Double {
+        // Obtener las coordenadas del punto
+        val pointCoord = Coordinate(point.longitude, point.latitude)
+
+        val pointGeom = geometryFactory.createPoint(pointCoord)
+
+        // Utilizar DistanceOp para encontrar los puntos más cercanos entre el punto y la geometría
+        val distanceOp = DistanceOp(pointGeom, geometry)
+        val nearestPoints = distanceOp.nearestLocations()
+
+        // nearestPoints[0] es el punto de entrada, nearestPoints[1] es el punto en la geometría
+        val nearestPointOnGeometry = nearestPoints[1].coordinate
+
+        // Calcular la distancia Haversine entre ambos puntos
+        return haversineDistance(point.latitude, point.longitude, nearestPointOnGeometry.y, nearestPointOnGeometry.x)
+    }
+    // Fórmula de Haversine para calcular la distancia entre dos puntos en metros
+    private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371000.0 // Radio de la Tierra en metros
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2).pow(2.0) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2).pow(2.0)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return R * c
+    }
+
 
 
     private val recentPositions = mutableListOf<LatLng>()

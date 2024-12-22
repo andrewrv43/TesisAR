@@ -228,7 +228,7 @@ class Referencias(val context: Context){
             withContext(Dispatchers.Main) {
                 Toast.makeText(context, "Verificando si existe una nueva versión...", Toast.LENGTH_LONG).show()
             }
-            val clientVersion = "0.5"  // Versión de la aplicación
+            val clientVersion = "0.5"  // Versión de la a                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       Bplicación
             val response = retrofitService.downloadApk(clientVersion)
             when (response.code()) {
                 200 -> {

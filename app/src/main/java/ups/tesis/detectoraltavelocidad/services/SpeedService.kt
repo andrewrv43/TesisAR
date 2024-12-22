@@ -47,8 +47,14 @@ import kotlin.math.sqrt
 import android.util.JsonReader
 import android.util.JsonToken
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import org.locationtech.jts.geom.*
+import org.locationtech.jts.index.strtree.STRtree
+import org.locationtech.jts.operation.distance.DistanceOp
 import ups.tesis.detectoraltavelocidad.conexionec2.CargaDatos
 import ups.tesis.detectoraltavelocidad.dataStore
+import kotlin.math.abs
 
 class SpeedService : LifecycleService() {
 
@@ -71,13 +77,13 @@ class SpeedService : LifecycleService() {
 
     val speedLiveData = MutableLiveData<Double>()
     val maxSpeedLiveData = MutableLiveData<Double>()
+    val streetNameLiveData = MutableLiveData<String>()
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
         initializeLocationComponents()
         envioDatos = CargaDatos()
-        Log.d("SpeedService", "onCreate()")
         retrofitService = ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
         val dataStore = PreferenceDataStoreFactory.create {
             applicationContext.filesDir.resolve("datastore/local_regs.preferences_pb")
@@ -88,7 +94,6 @@ class SpeedService : LifecycleService() {
         super.onStartCommand(intent, flags, startId)
         startForegroundService()
         startLocationUpdates()
-        Log.d("SpeedService", "onStartCommand()")
         return START_STICKY
     }
 
@@ -141,8 +146,8 @@ class SpeedService : LifecycleService() {
     private fun initializeLocationComponents() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
-            .setMinUpdateIntervalMillis(1000)
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
+            .setMinUpdateIntervalMillis(2000)
             .build()
 
         var lastSendDataTime = 0L
@@ -153,7 +158,7 @@ class SpeedService : LifecycleService() {
                     longitud = location.longitude
                     val currentLatLng = LatLng(location.latitude, location.longitude)
 
-                    CoroutineScope(Dispatchers.Default).launch {
+                    CoroutineScope(Dispatchers.IO).launch {
                         getCurrentLocation(currentLatLng)
                         getSpeed(location)
                         speedLiveData.postValue(speed)
@@ -198,47 +203,132 @@ class SpeedService : LifecycleService() {
     }
 
 
+    // Establecer limites de velocidad por tipos de calles
+    private fun getMaxSpeed(feature: JSONObject?): String {
+        val properties = feature?.getJSONObject("properties")
 
-
-
-    /************************************************************************************************
-     * Obtener dirección actual por medio de GPS
-     ************************************************************************************************/
-    private suspend fun getCurrentLocation(latLng: LatLng) {
-        // Cargar JSON
-        if (!::geoJsonData.isInitialized) {
-            withContext(Dispatchers.IO) {
-                loadGeoJson()
-            }
-        }
-        // Buscar el segmento de carretera más cercano
-        direccion = findNearestRoadSegment(latLng)
-        try {
-            maxSpeed = getMaxSpeed(direccion).toDouble()
-        } catch (e: Exception) {
-            maxSpeed = 0.0
-            Log.e("getCurrentLocation", "Error al parsear maxSpeed: ${e.message}")
+        val highwayType = properties?.optString("highway", "")
+        // Límites de velocidad por defecto según el tipo de carretera
+        return when (highwayType) {
+            "trunk" -> "70"
+            "primary" -> "50"
+            "secondary" -> "50"
+            "tertiary" -> "30"
+            "residential" -> "30"
+            else -> "Desconocido"
         }
     }
 
-    private lateinit var geoJsonData: JSONArray
-    // Cargar mapa de calles de Quito
+    /************************************************************************************************
+     * Obtener velocidad actual por medio de GPS y aplicar filtros para suavizado
+     ************************************************************************************************/
+    private val speedKalmanFilter = KalmanFilter(0.1)
+    private val speedReadings = mutableListOf<Double>()
+    private val SPEED_READINGS_MAX_SIZE = 2
+    private var lastSpeed = 0.0
+    private val MIN_ACCURACY = 5 // metros
+    private val MAX_SPEED = 200.0 // km/h
+    private val MAX_SPEED_INCREMENT = 10.0 // km/h por segundo
+    private val MIN_SPEED_THRESHOLD = 1.0 // km/h
+
+    private fun getSpeed(location: Location) {
+        if (location.accuracy <= MIN_ACCURACY) {
+            val currentTime = location.time
+            val lastTime = lastLocation?.time ?: 0L
+            val timeDelta = (currentTime - lastTime) / 1000.0
+
+            val currentSpeed: Double = if (location.hasSpeed()) {
+                location.speed * 3.6 // Convertir a km/h
+            } else if (lastLocation != null && lastLocation!!.accuracy <= MIN_ACCURACY && timeDelta > 0) {
+                val distanceInMeters = lastLocation!!.distanceTo(location)
+                val speedMps = distanceInMeters / timeDelta
+                speedMps * 3.6
+            } else {
+                0.0
+            }
+
+            // Validar velocidad máxima
+            val validatedSpeed = currentSpeed.coerceIn(0.0, MAX_SPEED)
+
+            /*
+
+            // Evitar picos de velocidad
+            val speedDelta = validatedSpeed - lastSpeed
+            val maxAllowedSpeedDelta = MAX_SPEED_INCREMENT * timeDelta
+
+            val finalSpeed = if (abs(speedDelta) <= maxAllowedSpeedDelta && validatedSpeed >= MIN_SPEED_THRESHOLD) {
+                validatedSpeed
+            } else {
+                lastSpeed // Mantén la última velocidad válida
+            }
+
+            // Añadir a las lecturas para suavizado
+            speedReadings.add(finalSpeed)
+            if (speedReadings.size > SPEED_READINGS_MAX_SIZE) {
+                speedReadings.removeAt(0)
+            }
+
+            // Suavizar con media móvil
+            val smoothedSpeed = speedReadings.average()
+
+            */
+
+            // Actualizar con filtro de Kalman
+            //speed = speedKalmanFilter.update(smoothedSpeed)
+            speed = speedKalmanFilter.update(validatedSpeed)
+            lastSpeed = speed
+
+            val distanceInMeters = lastLocation?.distanceTo(location) ?: 0f
+            if (distanceInMeters < 1.0 && speed < 1.0) {
+                speed = speedKalmanFilter.update(0.0)
+                lastSpeed = speed
+            }
+        } else {
+            // La precisión es baja, no confiar en esta lectura
+            speed = speedKalmanFilter.update(0.0)
+        }
+        lastLocation = location
+    }
+
+
+    /************************************************************************************************
+     * Cargar GeoJson como indice espacial
+     ************************************************************************************************/
+    private var isGeoJsonLoaded = false
+    private val geoJsonMutex = Mutex()
+    private lateinit var spatialIndex: STRtree
+    private val geometryFactory = GeometryFactory()
+
     private suspend fun loadGeoJson() {
-        withContext(Dispatchers.IO) {
+        geoJsonMutex.withLock {
+            if (isGeoJsonLoaded) {
+                Log.d("SpeedService", "GeoJSON ya está cargado o en proceso de carga")
+                return
+            }
             try {
                 assets.open("quito01.geojson").use { inputStream ->
                     InputStreamReader(inputStream).use { inputStreamReader ->
                         JsonReader(inputStreamReader).use { jsonReader ->
-                            // Avanza hasta encontrar "features" y lo procesa
+                            // El objeto raíz es un FeatureCollection
                             jsonReader.beginObject()
+                            var foundFeatures = false
+                            spatialIndex = STRtree()
+
                             while (jsonReader.hasNext()) {
                                 val name = jsonReader.nextName()
                                 if (name == "features") {
-                                    geoJsonData = JSONArray()
+                                    foundFeatures = true
                                     jsonReader.beginArray()
                                     while (jsonReader.hasNext()) {
                                         val feature = readJsonObject(jsonReader)
-                                        geoJsonData.put(feature)
+                                        val geometry =
+                                            parseGeometry(feature.getJSONObject("geometry"))
+                                        if (geometry != null && !geometry.isEmpty) {
+                                            spatialIndex.insert(
+                                                geometry.envelopeInternal,
+                                                Pair(feature, geometry)
+                                            )
+                                        }
                                     }
                                     jsonReader.endArray()
                                 } else {
@@ -246,17 +336,23 @@ class SpeedService : LifecycleService() {
                                 }
                             }
                             jsonReader.endObject()
+
+                            if (foundFeatures) {
+                                spatialIndex.build()
+                                isGeoJsonLoaded = true
+                                Log.d(
+                                    "SpeedService", "loadGeoJson() - Archivo cargado e indice espacial construido"
+                                )
+                            }
                         }
                     }
                 }
-                Log.d("SpeedService", "loadGeoJson() - Archivo cargado eficientemente")
             } catch (e: Exception) {
                 e.printStackTrace()
                 Log.e("SpeedService", "Error cargando GeoJSON: ${e.message}")
             }
         }
     }
-
     // Método recursivo para leer cualquier estructura JSON
     private fun readJsonObject(jsonReader: JsonReader): JSONObject {
         val jsonObject = JSONObject()
@@ -279,7 +375,6 @@ class SpeedService : LifecycleService() {
         jsonReader.endObject()
         return jsonObject
     }
-
     private fun readJsonArray(jsonReader: JsonReader): JSONArray {
         val jsonArray = JSONArray()
         jsonReader.beginArray()
@@ -301,91 +396,159 @@ class SpeedService : LifecycleService() {
         return jsonArray
     }
 
+    private fun parseGeometry(geometryJson: JSONObject): Geometry {
+        return when (val type = geometryJson.getString("type")) {
+            "LineString" -> {
+                val coordsArray = geometryJson.getJSONArray("coordinates")
+                val coordinates = Array(coordsArray.length()) { i ->
+                    val coord = coordsArray.getJSONArray(i)
+                    Coordinate(coord.getDouble(0), coord.getDouble(1))
+                }
+                geometryFactory.createLineString(coordinates)
+            }
+            else -> throw IllegalArgumentException("Tipo de geometría no soportado: $type")
+        }
+    }
 
+    private suspend fun findNearestRoadSegment(userLocation: LatLng, userHeading: Double): JSONObject? {
+        // Convertir la ubicación del usuario a un punto de JTS
+        val userPoint: Point = geometryFactory.createPoint(Coordinate(userLocation.longitude, userLocation.latitude))
 
-    // Encontrar la calle mas cercana por ubicacion
-    private suspend fun findNearestRoadSegment(latLng: LatLng): JSONObject? {
+        // Definir un radio de búsqueda en metros (por ejemplo, 100 metros)
+        val searchRadiusMeters = 20.0
+
+        // Convertir el radio de búsqueda de metros a grados aproximadamente
+        // Nota: 1 grado de latitud ≈ 111 km, 1 grado de longitud varía según la latitud
+        val latDegree = searchRadiusMeters / 111000.0
+        val lonDegree = searchRadiusMeters / (111000.0 * cos(Math.toRadians(userLocation.latitude)))
+
+        // Crear un envelope (rectángulo) alrededor del punto del usuario
+        val searchEnvelope = userPoint.buffer(lonDegree).envelopeInternal
+
+        // Consultar el índice espacial para obtener candidatos dentro del envelope
+        val candidates = spatialIndex.query(searchEnvelope)
+
         var nearestFeature: JSONObject? = null
-        var minDistance = Double.MAX_VALUE
+        var minDistanceMeters = Double.MAX_VALUE
+
         withContext(Dispatchers.IO) {
-            for (i in 0 until geoJsonData.length()) {
-                val feature = geoJsonData.getJSONObject(i)
-                val geometry = feature.getJSONObject("geometry")
-                val geometryType = geometry.getString("type")
+            for (candidate in candidates) {
+                val (feature, geometry) = candidate as Pair<JSONObject, Geometry>
 
-                if (geometryType == "LineString") {
-                    val coordinates = geometry.getJSONArray("coordinates")
+                // Calcular la distancia en metros usando la fórmula Haversine
+                val distance = distancePointToGeometry(userLocation, geometry)
 
-                    // Recorremos los puntos del LineString
-                    for (j in 0 until coordinates.length()) {
-                        val point = coordinates.getJSONArray(j)
-                        val lon = point.getDouble(0)
-                        val lat = point.getDouble(1)
-
-                        val distance = haversine(latLng.latitude, latLng.longitude, lat, lon)
-                        if (distance < minDistance) {
-                            minDistance = distance
-                            nearestFeature = feature
-                        }
-                    }
+                if (distance < minDistanceMeters) {
+                    minDistanceMeters = distance
+                    nearestFeature = feature
                 }
             }
         }
 
-        // Rango umbral minimo en metros
-        val distanceThreshold = 50.0 // metros
-        return if (minDistance <= distanceThreshold) nearestFeature else null
+        // Opcional: si no se encuentra ningún candidato, puedes ampliar el radio de búsqueda
+        //if (nearestFeature == null) {
+            // Implementar lógica para ampliar el radio de búsqueda si es necesario
+        //}
+        return nearestFeature
     }
-    // Función Haversine para calcular la distancia entre dos puntos en una esfera
-    private fun haversine(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+    private fun distancePointToGeometry(point: LatLng, geometry: Geometry): Double {
+        // Obtener las coordenadas del punto
+        val pointCoord = Coordinate(point.longitude, point.latitude)
+
+        val pointGeom = geometryFactory.createPoint(pointCoord)
+
+        // Utilizar DistanceOp para encontrar los puntos más cercanos entre el punto y la geometría
+        val distanceOp = DistanceOp(pointGeom, geometry)
+        val nearestPoints = distanceOp.nearestLocations()
+
+        // nearestPoints[0] es el punto de entrada, nearestPoints[1] es el punto en la geometría
+        val nearestPointOnGeometry = nearestPoints[1].coordinate
+
+        // Calcular la distancia Haversine entre ambos puntos
+        return haversineDistance(point.latitude, point.longitude, nearestPointOnGeometry.y, nearestPointOnGeometry.x)
+    }
+    // Fórmula de Haversine para calcular la distancia entre dos puntos en metros
+    private fun haversineDistance(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val R = 6371000.0 // Radio de la Tierra en metros
         val dLat = Math.toRadians(lat2 - lat1)
         val dLon = Math.toRadians(lon2 - lon1)
-        val a = sin(dLat / 2).pow(2.0) + cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) * sin(dLon / 2).pow(2.0)
+        val a = sin(dLat / 2).pow(2.0) +
+                cos(Math.toRadians(lat1)) * cos(Math.toRadians(lat2)) *
+                sin(dLon / 2).pow(2.0)
         val c = 2 * atan2(sqrt(a), sqrt(1 - a))
-
         return R * c
     }
-    // Establecer limites de velocidad por tipos de calles
-    private fun getMaxSpeed(feature: JSONObject?): String {
-        val properties = feature?.getJSONObject("properties")
 
-        val highwayType = properties?.optString("highway", "")
-        // Límites de velocidad por defecto según el tipo de carretera
-        return when (highwayType) {
-            "trunk" -> "70"
-            "primary" -> "50"
-            "secondary" -> "50"
-            "tertiary" -> "30"
-            "residential" -> "30"
-            else -> "Desconocido"
+
+
+    private val recentPositions = mutableListOf<LatLng>()
+
+    private fun addRecentPosition(latLng: LatLng) {
+        recentPositions.add(latLng)
+        if (recentPositions.size > 5) { // Mantén solo los últimos 5 puntos
+            recentPositions.removeAt(0)
         }
     }
 
-    /************************************************************************************************
-     * Obtener velocidad actual por medio de GPS
-     ************************************************************************************************/
-    private fun getSpeed(location: Location) {
-        if (location.hasSpeed()) {
-            speed = location.speed * 3.6 // Convertir a km/h
-            //speed = 777.0
-        } else if (lastLocation != null) {
-            val distanceInMeters = lastLocation!!.distanceTo(location)
-            val timeInSeconds = (location.time - lastLocation!!.time) / 1000.0
-
-            if (timeInSeconds > 0) {
-                val speedMps = distanceInMeters / timeInSeconds
-                speed = speedMps * 3.6
-            }
-        } else {
-            speed = 0.0
+    private suspend fun getCurrentLocation(latLng: LatLng) {
+        // Cargar JSON
+        if (!isGeoJsonLoaded) {
+            loadGeoJson()
         }
-        lastLocation = location
+
+        val filteredLatLng = filterGps(latLng.latitude, latLng.longitude)
+        addRecentPosition(filteredLatLng)
+
+        // Buscar el segmento de carretera más cercano
+        val userHeading = calculateUserHeading()
+        direccion = findNearestRoadSegment(latLng, userHeading)
+        direccion?.let { feature ->
+            maxSpeed = getMaxSpeed(feature).toDoubleOrNull() ?: 0.0
+
+            val properties = feature.getJSONObject("properties")
+            val streetName = properties.optString("name", "Desconocido")
+
+            streetNameLiveData.postValue(streetName)
+        } ?: run {
+            maxSpeed = 0.0
+            streetNameLiveData.postValue("Desconocido")
+        }
+    }
+
+    private fun calculateUserHeading(): Double {
+        if (recentPositions.size >= 2) {
+            val lastPos = recentPositions[recentPositions.size - 1]
+            val prevPos = recentPositions[recentPositions.size - 2]
+            return calculateBearing(prevPos, lastPos)
+        }
+        return 0.0
+    }
+
+    private fun calculateBearing(start: LatLng, end: LatLng): Double {
+        val startLat = Math.toRadians(start.latitude)
+        val startLng = Math.toRadians(start.longitude)
+        val endLat = Math.toRadians(end.latitude)
+        val endLng = Math.toRadians(end.longitude)
+
+        val dLng = endLng - startLng
+        val y = sin(dLng) * cos(endLat)
+        val x = cos(startLat) * sin(endLat) - sin(startLat) * cos(endLat) * cos(dLng)
+        return (Math.toDegrees(atan2(y, x)) + 360) % 360
+    }
+
+    private val kalmanFilterLat = KalmanFilter(0.0001)
+    private val kalmanFilterLng = KalmanFilter(0.0001)
+
+    private fun filterGps(lat: Double, lng: Double): LatLng {
+        val filteredLat = kalmanFilterLat.update(lat)
+        val filteredLng = kalmanFilterLng.update(lng)
+        return LatLng(filteredLat, filteredLng)
     }
 
 
 
-    private val ref = Referencias(context = this) // <----- Revisar esto
+
+    private val ref = Referencias(context = this)
     private lateinit var retrofitService: RetrofitService
     /**
      * Envio de datos a endpoint
@@ -403,5 +566,21 @@ class SpeedService : LifecycleService() {
             Log.d("SpeedService", "sendData()")
             envioDatos.saveInfoToSv(dataStore,retrofitService, newRegister)
 
+    }
+}
+
+class KalmanFilter(private val q: Double) {
+    private var x = 0.0 // Estimación
+    private var p = 1.0 // Error de estimación
+    private val r = 1.0 // Varianza de la medición
+
+    fun update(z: Double): Double {
+        // Predicción
+        p += q
+        // Actualización
+        val k = p / (p + r)
+        x += k * (z - x)
+        p *= (1 - k)
+        return x
     }
 }

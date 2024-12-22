@@ -105,7 +105,6 @@ class LocationPermissions (private val activity: Activity, private val permissio
             }
             Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q -> {
                 // Para Android 10, pide el permiso de ACCESS_BACKGROUND_LOCATION
-
                 ActivityCompat.requestPermissions(
                     activity,
                     arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION),

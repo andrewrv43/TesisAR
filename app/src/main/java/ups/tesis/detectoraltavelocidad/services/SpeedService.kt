@@ -224,7 +224,7 @@ class SpeedService : LifecycleService() {
      ************************************************************************************************/
     private val speedKalmanFilter = KalmanFilter(1.5)
     private var lastSpeed = 0.0
-    private val MIN_ACCURACY = 5 // metros
+    private val MIN_ACCURACY = 13.0 // metros
     private val MAX_SPEED = 200.0 // km/h
 
     private fun getSpeed(location: Location) {
@@ -260,6 +260,7 @@ class SpeedService : LifecycleService() {
             // La precisión es baja, no confiar en esta lectura
             speed = speedKalmanFilter.update(0.0)
         }
+        Log.d("SpeedService", "Accuracy: ${location.accuracy}")
         lastLocation = location
     }
 

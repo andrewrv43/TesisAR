@@ -146,8 +146,8 @@ class SpeedService : LifecycleService() {
     private fun initializeLocationComponents() {
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
-        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 2000)
-            .setMinUpdateIntervalMillis(2000)
+        locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000)
+            .setMinUpdateIntervalMillis(1000)
             .build()
 
         var lastSendDataTime = 0L
@@ -222,14 +222,10 @@ class SpeedService : LifecycleService() {
     /************************************************************************************************
      * Obtener velocidad actual por medio de GPS y aplicar filtros para suavizado
      ************************************************************************************************/
-    private val speedKalmanFilter = KalmanFilter(0.1)
-    private val speedReadings = mutableListOf<Double>()
-    private val SPEED_READINGS_MAX_SIZE = 2
+    private val speedKalmanFilter = KalmanFilter(1.5)
     private var lastSpeed = 0.0
     private val MIN_ACCURACY = 5 // metros
     private val MAX_SPEED = 200.0 // km/h
-    private val MAX_SPEED_INCREMENT = 10.0 // km/h por segundo
-    private val MIN_SPEED_THRESHOLD = 1.0 // km/h
 
     private fun getSpeed(location: Location) {
         if (location.accuracy <= MIN_ACCURACY) {
@@ -250,32 +246,9 @@ class SpeedService : LifecycleService() {
             // Validar velocidad máxima
             val validatedSpeed = currentSpeed.coerceIn(0.0, MAX_SPEED)
 
-            /*
-
-            // Evitar picos de velocidad
-            val speedDelta = validatedSpeed - lastSpeed
-            val maxAllowedSpeedDelta = MAX_SPEED_INCREMENT * timeDelta
-
-            val finalSpeed = if (abs(speedDelta) <= maxAllowedSpeedDelta && validatedSpeed >= MIN_SPEED_THRESHOLD) {
-                validatedSpeed
-            } else {
-                lastSpeed // Mantén la última velocidad válida
-            }
-
-            // Añadir a las lecturas para suavizado
-            speedReadings.add(finalSpeed)
-            if (speedReadings.size > SPEED_READINGS_MAX_SIZE) {
-                speedReadings.removeAt(0)
-            }
-
-            // Suavizar con media móvil
-            val smoothedSpeed = speedReadings.average()
-
-            */
-
             // Actualizar con filtro de Kalman
-            //speed = speedKalmanFilter.update(smoothedSpeed)
-            speed = speedKalmanFilter.update(validatedSpeed)
+            //speed = speedKalmanFilter.update(validatedSpeed)
+            speed = validatedSpeed
             lastSpeed = speed
 
             val distanceInMeters = lastLocation?.distanceTo(location) ?: 0f
@@ -572,7 +545,7 @@ class SpeedService : LifecycleService() {
 class KalmanFilter(private val q: Double) {
     private var x = 0.0 // Estimación
     private var p = 1.0 // Error de estimación
-    private val r = 1.0 // Varianza de la medición
+    private val r = 0.3 // Varianza de la medición
 
     fun update(z: Double): Double {
         // Predicción

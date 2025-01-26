@@ -81,7 +81,7 @@ object RetrofitServiceFactory {
             .build()
 
         return Retrofit.Builder()
-            .baseUrl("http://98.81.148.196:5000/")
+            .baseUrl("http://192.168.68.142:5000/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

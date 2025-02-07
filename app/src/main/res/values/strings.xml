@@ -13,4 +13,49 @@
     <string name="ProfileActivity">ProfileActivity</string>
     <string name="Actualizacion">REALIZAREMOS UNA ACTUALIZACION EN NUESTRA APP. \nPOR FAVOR ASEGURATE DE ACEPTAR LOS PERMISOS E INSTALAR LA NUEVA VERSION.</string>
 
+    <string name="privacy_terms">
+        1. RECOLECCIÓN DE DATOS DE UBICACIÓN\n
+        La aplicación recopila datos de ubicación (GPS, Wi-Fi, torres de telefonía, entre otros) de forma continua mientras está en funcionamiento.\n
+        Esta información puede incluir coordenadas geográficas, dirección IP y otros identificadores que ayuden a determinar la ubicación precisa del dispositivo.\n\n
+
+        2. FINALIDAD DEL TRATAMIENTO\n
+        Utilizamos los datos de ubicación para proporcionar [funcionalidades clave de la app — por ejemplo, navegación, recomendaciones cercanas, estadísticas de recorrido, etc.].\n
+        La ubicación se guarda y se analiza para [describir la finalidad principal, por ejemplo: “mejorar la experiencia del usuario”, “mejorar las rutas de viaje” o “proveer servicios basados en la ubicación en tiempo real”].\n\n
+
+        3. CONSENTIMIENTO\n
+        Al instalar y usar la aplicación, usted acepta que se recolecten y procesen sus datos de ubicación de manera continua.\n
+        El uso continuo de los servicios de ubicación significa que el dispositivo podrá enviar datos incluso cuando la aplicación se ejecute en segundo plano.\n\n
+
+        4. OPCIONES DE CONTROL\n
+        El usuario puede revocar o modificar el consentimiento en cualquier momento, desactivando los servicios de ubicación en la configuración del dispositivo o de la aplicación.\n
+        Sin embargo, la desactivación de la geolocalización puede limitar o impedir el correcto funcionamiento de ciertas funciones de la aplicación.\n\n
+
+        5. TIPO DE DATOS ALMACENADOS\n
+        La aplicación registra la ubicación del usuario en intervalos regulares o de manera continua.\n
+        Se almacenan registros de fecha y hora junto con la ubicación.\n
+        Se pueden recopilar datos de contexto adicionales (por ejemplo, nivel de batería, estado de la conexión a Internet) para fines de diagnóstico y mejora de la funcionalidad.\n\n
+
+        6. TIEMPO DE CONSERVACIÓN DE LOS DATOS\n
+        Los datos de ubicación se conservan durante el tiempo necesario para cumplir con el propósito para el que fueron recopilados, o según lo exijan las leyes aplicables.\n
+        Una vez que los datos ya no sean necesarios para la prestación del servicio o para fines legales, se eliminarán o se anonimizan de forma permanente.\n\n
+
+        7. SEGURIDAD Y PROTECCIÓN DE DATOS\n
+        Adoptamos medidas de seguridad administrativas, técnicas y físicas para proteger los datos de ubicación contra acceso no autorizado, alteración o divulgación.\n
+        Solo el personal autorizado, que requiera acceso a esta información para realizar sus funciones, podrá consultar los datos de ubicación.\n\n
+
+        8. COMPARTICIÓN CON TERCEROS\n
+        No vendemos, comercializamos ni transferimos los datos de ubicación a terceros sin su consentimiento expreso.\n
+        Podríamos compartir información anónima o agregada con terceros (por ejemplo, para fines estadísticos o de investigación) que no permita la identificación directa del usuario.\n
+        En caso de que sea necesario compartir datos con proveedores de servicios (por ejemplo, servicios de mapas o análisis), estos proveedores deben cumplir con nuestros estándares de confidencialidad y protección de datos.\n\n
+
+        9. USO DE SERVICIOS DE TERCEROS\n
+        La aplicación puede integrar servicios de terceros (API de mapas, pasarelas de pago, etc.) que también podrían recopilar datos de ubicación.\n
+        Recomendamos revisar las políticas de privacidad de esos servicios para conocer cómo manejan su información personal.\n\n
+
+        10. DERECHOS DEL USUARIO\n
+        El usuario tiene derecho a acceder, rectificar, eliminar o restringir el uso de sus datos de ubicación en cualquier momento.\n
+        Puede solicitar información adicional sobre cómo se manejan sus datos o presentar quejas sobre el tratamiento de los mismos.
+    </string>
+
+
 </resources>

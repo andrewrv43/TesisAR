@@ -118,6 +118,22 @@
             android:text="00" />
     </FrameLayout>
 
+    <ImageButton
+        android:id="@+id/toggleButton"
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+        android:layout_marginBottom="55dp"
+        android:contentDescription="Switch On/Off"
+        android:src="@drawable/switch_on"
+        android:background="@android:color/transparent"
+        android:adjustViewBounds="true"
+        android:scaleType="centerInside"
+        android:focusable="true"
+        android:focusableInTouchMode="true"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <FrameLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

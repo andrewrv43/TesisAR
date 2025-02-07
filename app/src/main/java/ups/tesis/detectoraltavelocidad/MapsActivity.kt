@@ -25,6 +25,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.widget.Button
+import android.widget.ImageButton
 import androidx.appcompat.app.AppCompatActivity
 import androidx.datastore.core.DataStore
 import androidx.lifecycle.lifecycleScope
@@ -58,6 +59,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private lateinit var infoBtn2: Button
     private lateinit var profileBtn: ImageView
     private lateinit var profileBtn2: Button
+    private lateinit var toggleButton: ImageButton
 
     private lateinit var streetText: TextView
     private lateinit var speedText: TextView
@@ -67,6 +69,8 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
     private var lastLocation: Location? = null
     private var speed: Double = 0.0
     private var maxSpeed: Double = 0.0
+    private var showingFirstIcon = true
+
 
     val ref = Referencias(context = this)
     private lateinit var retrofitService: RetrofitService
@@ -139,9 +143,6 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         registerBroadcastReceiver()
         createLayoutVariables()
 
-        glowContainer = findViewById(R.id.glowContainer)
-        val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
-        glowContainer.startAnimation(pulseAnimation)
 
         retrofitService=ref.initializeRetrofitService(ref.getFromPreferences("auth_token"))
         data= CargaDatos()
@@ -211,6 +212,25 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
         profileBtn2.setOnClickListener {
             val intent = Intent(this, ProfileActivity::class.java)
             startActivity(intent)
+        }
+
+        glowContainer = findViewById(R.id.glowContainer)
+        val pulseAnimation = AnimationUtils.loadAnimation(this, R.anim.pulse_animation)
+        glowContainer.startAnimation(pulseAnimation)
+
+        toggleButton = findViewById(R.id.toggleButton)
+        // Establecer el listener de click para cambiar el icono
+        toggleButton.setOnClickListener {
+            if (showingFirstIcon) {
+                toggleButton.setImageResource(R.drawable.switch_off) // Icono OFF
+                glowContainer.clearAnimation()
+                glowContainer.setBackgroundResource(0)
+            } else {
+                toggleButton.setImageResource(R.drawable.switch_on) // Icono ON
+                glowContainer.startAnimation(pulseAnimation)
+                glowContainer.setBackgroundResource(R.drawable.border_glow_green)
+            }
+            showingFirstIcon = !showingFirstIcon
         }
     }
 
@@ -360,6 +380,11 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      * Actualizar el color del borde en función de la velocidad y el límite
      */
     private fun updateGlow(speed: Double, limit: Double) {
+        if (!showingFirstIcon) {
+            glowContainer.clearAnimation()
+            glowContainer.setBackgroundResource(0)
+            return
+        }
         when {
             // Si la velocidad es mayor al límite, rojo
             speed > limit -> {
@@ -381,7 +406,7 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback, GoogleMap.OnMyLoca
      *   Sensor de velocidad (ACELEROMETRO)
      ********************************************************************************************/
     /**
-     * Crear sensor de acelerometro y inicializar los TextViews
+     * Inicializar los TextViews
      */
     private fun createLayoutVariables() {
         // Inicializar los TextViews para mostrar los valores

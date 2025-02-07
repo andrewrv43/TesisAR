@@ -57,9 +57,9 @@ object RetrofitServiceFactory {
         }
 
         val client = OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
             .retryOnConnectionFailure(true)
             .addInterceptor { chain ->
@@ -81,7 +81,7 @@ object RetrofitServiceFactory {
             .build()
 
         return Retrofit.Builder()
-            .baseUrl("http://192.168.68.142:5000/")
+            .baseUrl("https://f744-200-63-104-90.ngrok-free.app/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

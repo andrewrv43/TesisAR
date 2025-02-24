@@ -196,6 +196,86 @@
             android:layout_weight="1"
             style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:text="Alto" />
+
     </com.google.android.material.button.MaterialButtonToggleGroup>
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/buttonPrivacyPolicy"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Términos de Privacidad"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_margin="16dp" />
+
+    <!-- Vista semitransparente que se muestra al presionar el botón -->
+    <FrameLayout
+        android:id="@+id/privacyPolicyOverlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:background="#80000000">
+
+        <!-- Contenedor principal para los términos -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:layout_margin="16dp"
+            android:padding="16dp"
+            android:background="@android:color/white">
+
+            <!-- Botón para cerrar (parte superior derecha) -->
+            <ImageButton
+                android:id="@+id/closeButtonPrivacy"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_alignParentEnd="true"
+                android:layout_marginEnd="8dp"
+                android:background="@android:color/transparent"
+                android:scaleType="centerInside"
+                android:src="@drawable/back" />
+
+            <!-- ScrollView para permitir desplazarse por el texto de los términos -->
+            <ScrollView
+                android:id="@+id/privacyScrollView"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/closeButtonPrivacy"
+                android:layout_alignParentStart="true"
+                android:layout_alignParentEnd="true"
+                android:layout_marginTop="8dp"
+                android:maxHeight="400dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical">
+
+                    <!-- Texto de los términos de privacidad -->
+                    <TextView
+                        android:id="@+id/privacyPolicyText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@string/privacy_terms"
+                        android:textColor="@android:color/black"
+                        android:textSize="16sp" />
+
+                    <!-- CheckBox para aceptar los términos -->
+                    <CheckBox
+                        android:id="@+id/checkAcceptPrivacy"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="Acepto los términos de privacidad" />
+                </LinearLayout>
+            </ScrollView>
+        </RelativeLayout>
+    </FrameLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>

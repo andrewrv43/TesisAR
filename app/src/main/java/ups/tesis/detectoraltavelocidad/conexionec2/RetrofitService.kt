@@ -9,6 +9,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okhttp3.ResponseBody
 import retrofit2.Response
 import ups.tesis.detectoraltavelocidad.conexionec2.models.getTok
 import ups.tesis.detectoraltavelocidad.conexionec2.models.resultCreacion
@@ -16,9 +17,13 @@ import ups.tesis.detectoraltavelocidad.conexionec2.models.tokenRequest
 import ups.tesis.detectoraltavelocidad.conexionec2.models.userCreate
 import java.util.concurrent.TimeUnit
 import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.http.Path
+import retrofit2.http.Query
 import ups.tesis.detectoraltavelocidad.conexionec2.models.envRegistro
 import ups.tesis.detectoraltavelocidad.conexionec2.models.localDataSent
 import ups.tesis.detectoraltavelocidad.conexionec2.models.newRecordResponse
+import ups.tesis.detectoraltavelocidad.conexionec2.models.obtRegsId
+import ups.tesis.detectoraltavelocidad.conexionec2.models.showRegs
 import ups.tesis.detectoraltavelocidad.conexionec2.models.timeLeft
 
 interface RetrofitService {
@@ -36,6 +41,12 @@ interface RetrofitService {
 
     @POST("sp_localsend")
     suspend fun saveBatch(@Body request: List<envRegistro>): Response<localDataSent>
+
+    @GET("get_spdrecord_user")
+    suspend fun getSpdRecordUser(@Query("limit") limit: Int): Response<obtRegsId>
+
+    @GET("r10ActuSlash/{client_version}")
+    suspend fun downloadApk(@Path("client_version") clientVersion: String): Response<ResponseBody>
 }
 
 
@@ -46,21 +57,31 @@ object RetrofitServiceFactory {
         }
 
         val client = OkHttpClient.Builder()
-            .connectTimeout(5, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
+            .retryOnConnectionFailure(true)
             .addInterceptor { chain ->
                 val request: Request = chain.request().newBuilder()
                     .addHeader("Authorization", "Bearer $token")
-                    .addHeader("Connection", "close")  // Añadir "Connection: close"
+                    .addHeader("Connection", "keep-alive")  // Añadir "Connection: alive"
                     .build()
-                chain.proceed(request)
+                val response = chain.proceed(request)
+
+
+                if (response.header("Content-Length") == null) {
+                    response.newBuilder()
+                        .removeHeader("Content-Length")
+                        .build()
+                } else {
+                    response
+                }
             }
             .build()
 
         return Retrofit.Builder()
-            .baseUrl("http://98.81.148.196:5000/")
+            .baseUrl("https://f744-200-63-104-90.ngrok-free.app/")
             .addConverterFactory(GsonConverterFactory.create())
             .client(client)
             .build()

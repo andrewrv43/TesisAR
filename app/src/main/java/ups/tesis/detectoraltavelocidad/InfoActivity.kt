@@ -3,10 +3,15 @@ package ups.tesis.detectoraltavelocidad
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
+import android.widget.CheckBox
+import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.Switch
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.Toolbar
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.button.MaterialButtonToggleGroup
 import ups.tesis.detectoraltavelocidad.conexionec2.models.MapConfig
 
@@ -28,6 +33,9 @@ class InfoActivity : AppCompatActivity() {
         val toolbar = findViewById<Toolbar>(R.id.toolbar)
         setSupportActionBar(toolbar)
 
+        // Mostrar la política de privacidad
+        privacyPolicy()
+
         // Habilitar el botón de retroceso en el Toolbar
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
         supportActionBar?.setDisplayShowHomeEnabled(true)
@@ -36,6 +44,7 @@ class InfoActivity : AppCompatActivity() {
     /**
      * Configurar y actualizar los listeners para los grupos de botones
      */
+
     private fun setupToggleGroupListeners() {
         // Obtener los valores de selección guardados
         val savedConfig = loadConfig(this)
@@ -139,6 +148,23 @@ class InfoActivity : AppCompatActivity() {
         // Enviar un broadcast para notificar a MapsActivity
         val intent = Intent("com.example.UPDATE_MAP_STYLE")
         LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
+    private fun privacyPolicy() {
+        val privacyOverlay = findViewById<FrameLayout>(R.id.privacyPolicyOverlay)
+        val closeButton = findViewById<ImageButton>(R.id.closeButtonPrivacy)
+        val privacyButton = findViewById<MaterialButton>(R.id.buttonPrivacyPolicy)
+        val checkAcceptPrivacy = findViewById<CheckBox>(R.id.checkAcceptPrivacy)
+
+        // Mostrar overlay
+        privacyButton.setOnClickListener {
+            privacyOverlay.visibility = View.VISIBLE
+        }
+
+        // Cerrar overlay con el botón "X"
+        closeButton.setOnClickListener {
+            privacyOverlay.visibility = View.GONE
+        }
     }
     /**
      * Cargar la configuración seleccionada de
